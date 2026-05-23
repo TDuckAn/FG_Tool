@@ -33,6 +33,21 @@ CmtDraftDto _$CmtDraftDtoFromJson(Map<String, dynamic> json) => CmtDraftDto(
           )
           .toList() ??
       const [],
+  grades:
+      (json['grades'] as Map<String, dynamic>?)?.map(
+        (studentId, scores) => MapEntry(
+          studentId,
+          (scores as Map<String, dynamic>).map(
+            (component, score) => MapEntry(component, (score as num).toDouble()),
+          ),
+        ),
+      ) ??
+      const {},
+  gradingComponents:
+      (json['gradingComponents'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList() ??
+      const [],
   status:
       $enumDecodeNullable(_$DraftStatusEnumMap, json['status']) ??
       DraftStatus.notStarted,
@@ -65,6 +80,8 @@ Map<String, dynamic> _$CmtDraftDtoToJson(CmtDraftDto instance) =>
       'conclusion': instance.conclusion,
       'decisions': instance.decisions,
       'contributions': instance.contributions,
+      'grades': instance.grades,
+      'gradingComponents': instance.gradingComponents,
       'status': _$DraftStatusEnumMap[instance.status]!,
       'matchStatus': _$MatchStatusEnumMap[instance.matchStatus]!,
       'lastEditedAt': instance.lastEditedAt?.toIso8601String(),

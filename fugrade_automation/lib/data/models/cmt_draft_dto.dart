@@ -34,6 +34,12 @@ class CmtDraftDto {
   // Per-student contribution percentages (from Google Sheet)
   final List<MemberContributionDto> contributions;
 
+  // Per-student grading data entered by teacher.
+  final Map<String, Map<String, double>> grades;
+
+  // Grading component names shown as columns in the grading panel.
+  final List<String> gradingComponents;
+
   // App state
   final DraftStatus status;
   final MatchStatus matchStatus;
@@ -57,6 +63,8 @@ class CmtDraftDto {
     this.conclusion = '',
     required this.decisions,
     this.contributions = const [],
+    this.grades = const {},
+    this.gradingComponents = const [],
     this.status = DraftStatus.notStarted,
     this.matchStatus = MatchStatus.none,
     this.lastEditedAt,
@@ -74,6 +82,8 @@ class CmtDraftDto {
     String? conclusion,
     List<StudentDecisionDto>? decisions,
     List<MemberContributionDto>? contributions,
+    Map<String, Map<String, double>>? grades,
+    List<String>? gradingComponents,
     DraftStatus? status,
     MatchStatus? matchStatus,
     DateTime? lastEditedAt,
@@ -96,6 +106,8 @@ class CmtDraftDto {
         conclusion: conclusion ?? this.conclusion,
         decisions: decisions ?? this.decisions,
         contributions: contributions ?? this.contributions,
+        grades: grades ?? this.grades,
+        gradingComponents: gradingComponents ?? this.gradingComponents,
         status: status ?? this.status,
         matchStatus: matchStatus ?? this.matchStatus,
         lastEditedAt: lastEditedAt ?? this.lastEditedAt,

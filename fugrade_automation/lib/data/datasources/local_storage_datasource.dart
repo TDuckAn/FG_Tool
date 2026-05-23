@@ -18,6 +18,21 @@ class LocalStorageDatasource {
     return File(p.join(_appDataRoot, 'fugrade_automation', 'config.json'));
   }
 
+  Future<String> loadFinalSheetUrl() async {
+    final config = await loadConfig();
+    return (config['finalSheetUrl'] ?? '').toString();
+  }
+
+  Future<void> saveSheetUrls({
+    required String responseSheetUrl,
+    required String finalSheetUrl,
+  }) async {
+    final config = await loadConfig();
+    config['responseSheetUrl'] = responseSheetUrl;
+    config['finalSheetUrl'] = finalSheetUrl;
+    await saveConfig(config);
+  }
+
   Future<void> saveDraft(CmtDraftDto draft) async {
     final dir = await _draftsDir(draft.semester, draft.teacherLogin);
     final file = File(p.join(dir.path, '${draft.classCode}.json'));

@@ -4,8 +4,10 @@ import 'package:googleapis/sheets/v4.dart';
 import 'package:googleapis_auth/auth_io.dart';
 import 'package:path/path.dart' as p;
 import 'package:fugrade_automation/core/utils/app_logger.dart';
+import 'package:fugrade_automation/data/models/cmt_draft_dto.dart';
 import 'package:fugrade_automation/data/models/member_contribution_dto.dart';
 import 'package:fugrade_automation/data/models/sheet_row_dto.dart';
+import 'package:fugrade_automation/data/models/student_decision_dto.dart';
 
 class SheetsApiException implements Exception {
   final String message;
@@ -15,7 +17,28 @@ class SheetsApiException implements Exception {
 }
 
 class SheetsApiDatasource {
-  static const _scopes = [SheetsApi.spreadsheetsReadonlyScope];
+  static const _scopes = [SheetsApi.spreadsheetsScope];
+
+  static const _finalHeaders = [
+    'timestamp',
+    'semester',
+    'subjectCode',
+    'classCode',
+    'teacher',
+    'titleVN',
+    'titleEN',
+    'content',
+    'form',
+    'attitude',
+    'achievement',
+    'limitation',
+    'conclusion',
+    'status',
+    'contributionsJson',
+    'decisionsJson',
+    'gradesJson',
+    'gradingComponentsJson',
+  ];
 
   /// Column name aliases (case-insensitive, trim-safe) — spec §9.2
   static const _colAliases = {
@@ -31,6 +54,17 @@ class SheetsApiDatasource {
     'achievement': ['achievement', 'mức đạt', '4.1'],
     'limitation': ['limitation', 'hạn chế', '4.2'],
     'conclusion': ['conclusion', 'kết luận'],
+    'timestamp': ['timestamp', 'thời gian'],
+    'status': ['status', 'completion', 'completed'],
+    'contributionsJson': ['contributionsjson', 'contributions json'],
+    'decisionsJson': ['decisionsjson', 'decisions json'],
+    'gradesJson': ['gradesjson', 'grades json'],
+    'gradingComponentsJson': [
+      'gradingcomponentsjson',
+      'grading components json',
+      'componentsjson',
+      'components json'
+    ],
   };
 
   Future<SheetsApi> _buildApi() async {
@@ -63,6 +97,132 @@ class SheetsApiDatasource {
         RegExp(r'/spreadsheets/d/([a-zA-Z0-9_-]+)').firstMatch(url);
     if (match == null) throw SheetsApiException('Invalid Google Sheets URL.');
     return match.group(1)!;
+  }
+
+  Future<void> saveDraftToFinalSheet(String sheetIdOrUrl, CmtDraftDto draft) async {
+    final sheetId = sheetIdOrUrl.contains('/')
+        ? extractSheetId(sheetIdOrUrl)
+        : sheetIdOrUrl;
+    final api = await _buildApi();
+
+    final meta = await api.spreadsheets.get(sheetId);
+    final sheets = meta.sheets ?? [];
+    if (sheets.isEmpty) {
+      throw SheetsApiException('FINAL spreadsheet has no tabs.');
+    }
+    final tabName = sheets.first.properties?.title ?? 'FINAL';
+
+    final row = _buildFinalRow(draft);
+    final existing = await api.spreadsheets.values.get(sheetId, '$tabName!A:R');
+    final rawRows = existing.values ?? [];
+
+    if (rawRows.isEmpty) {
+      await api.spreadsheets.values.update(
+        ValueRange(values: [_finalHeaders, row]),
+        sheetId,
+        '$tabName!A1:R2',
+        valueInputOption: 'USER_ENTERED',
+      );
+      return;
+    }
+
+    final headers = rawRows.first.map((h) => h.toString().trim()).toList();
+    final colIndex = _buildColumnIndex(headers);
+    if (!_hasFinalMatchColumns(colIndex)) {
+      await api.spreadsheets.values.update(
+        ValueRange(values: [_finalHeaders]),
+        sheetId,
+        '$tabName!A1:R1',
+        valueInputOption: 'USER_ENTERED',
+      );
+    }
+
+    final rowNumber = _findFinalRowNumber(rawRows, colIndex, draft);
+    if (rowNumber == null) {
+      await api.spreadsheets.values.append(
+        ValueRange(values: [row]),
+        sheetId,
+        '$tabName!A:R',
+        valueInputOption: 'USER_ENTERED',
+        insertDataOption: 'INSERT_ROWS',
+      );
+    } else {
+      await api.spreadsheets.values.update(
+        ValueRange(values: [row]),
+        sheetId,
+        '$tabName!A$rowNumber:R$rowNumber',
+        valueInputOption: 'USER_ENTERED',
+      );
+    }
+  }
+
+  List<Object?> _buildFinalRow(CmtDraftDto draft) {
+    return [
+      DateTime.now().toIso8601String(),
+      draft.semester,
+      draft.subjectCode,
+      draft.classCode,
+      draft.teacherLogin,
+      draft.titleVN,
+      draft.titleEN,
+      draft.content,
+      draft.formComment,
+      draft.attitude,
+      draft.achievement,
+      draft.limitation,
+      draft.conclusion,
+      draft.status.name,
+      jsonEncode(draft.contributions.map((e) => e.toJson()).toList()),
+      jsonEncode(draft.decisions.map((e) => e.toJson()).toList()),
+      jsonEncode(draft.grades),
+      jsonEncode(_effectiveGradingComponents(draft)),
+    ];
+  }
+
+  List<String> _effectiveGradingComponents(CmtDraftDto draft) {
+    final components = <String>[
+      ...draft.gradingComponents,
+      for (final row in draft.grades.values) ...row.keys,
+    ]
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toSet()
+        .toList();
+    return components.isEmpty
+        ? const ['Component 1', 'Component 2', 'Component 3']
+        : components;
+  }
+
+  bool _hasFinalMatchColumns(Map<String, int> colIndex) {
+    return colIndex.containsKey('semester') &&
+        colIndex.containsKey('subjectCode') &&
+        colIndex.containsKey('classCode') &&
+        colIndex.containsKey('teacher');
+  }
+
+  int? _findFinalRowNumber(
+    List<List<Object?>> rawRows,
+    Map<String, int> colIndex,
+    CmtDraftDto draft,
+  ) {
+    if (!_hasFinalMatchColumns(colIndex)) return null;
+
+    String cell(List<Object?> row, String key) {
+      final index = colIndex[key];
+      return index != null && index < row.length ? row[index].toString().trim() : '';
+    }
+
+    for (var i = 1; i < rawRows.length; i++) {
+      final row = rawRows[i];
+      if (cell(row, 'semester') == draft.semester &&
+          cell(row, 'subjectCode') == draft.subjectCode &&
+          cell(row, 'classCode') == draft.classCode &&
+          cell(row, 'teacher') == draft.teacherLogin) {
+        return i + 1;
+      }
+    }
+
+    return null;
   }
 
   Future<List<SheetRowDto>> fetchRows(String sheetIdOrUrl) async {
@@ -167,14 +327,22 @@ class SheetsApiDatasource {
       return null;
     }
 
-    final contributions = <MemberContributionDto>[];
-    for (int n = 1; n <= 6; n++) {
-      final roll = get('member${n}roll');
-      final pct = double.tryParse(get('member${n}percent')) ?? 0;
-      if (roll.isNotEmpty) {
-        contributions.add(MemberContributionDto(roll: roll, percentage: pct));
+    final contributions = _parseContributions(get('contributionsJson'));
+    if (contributions.isEmpty) {
+      for (int n = 1; n <= 6; n++) {
+        final roll = get('member${n}roll');
+        final pct = double.tryParse(get('member${n}percent')) ?? 0;
+        if (roll.isNotEmpty) {
+          contributions.add(MemberContributionDto(roll: roll, percentage: pct));
+        }
       }
     }
+
+    final gradingComponents = _parseStringList(get('gradingComponentsJson'));
+    final grades = _parseGrades(get('gradesJson'));
+    final effectiveComponents = gradingComponents.isNotEmpty
+        ? gradingComponents
+        : grades.values.expand((row) => row.keys).toSet().toList();
 
     return SheetRowDto(
       semester: semester,
@@ -190,8 +358,86 @@ class SheetsApiDatasource {
       limitation: get('limitation'),
       conclusion: get('conclusion'),
       contributions: contributions,
+      status: _parseDraftStatus(get('status')),
+      decisions: _parseDecisions(get('decisionsJson')),
+      grades: grades,
+      gradingComponents: effectiveComponents,
       timestamp: get('timestamp').isEmpty ? null : get('timestamp'),
     );
+  }
+
+  List<MemberContributionDto> _parseContributions(String raw) {
+    if (raw.trim().isEmpty) return [];
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) return [];
+      return decoded
+          .whereType<Map<String, dynamic>>()
+          .map(MemberContributionDto.fromJson)
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  List<StudentDecisionDto> _parseDecisions(String raw) {
+    if (raw.trim().isEmpty) return [];
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) return [];
+      return decoded
+          .whereType<Map<String, dynamic>>()
+          .map(StudentDecisionDto.fromJson)
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Map<String, Map<String, double>> _parseGrades(String raw) {
+    if (raw.trim().isEmpty) return {};
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return {};
+      return decoded.map((studentId, scores) {
+        if (scores is! Map) return MapEntry(studentId.toString(), <String, double>{});
+        return MapEntry(
+          studentId.toString(),
+          scores.map((component, score) {
+            final parsed = score is num ? score.toDouble() : double.tryParse(score.toString());
+            return MapEntry(component.toString(), parsed ?? 0);
+          }),
+        );
+      });
+    } catch (_) {
+      return {};
+    }
+  }
+
+  List<String> _parseStringList(String raw) {
+    if (raw.trim().isEmpty) return [];
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) return [];
+      return decoded
+          .map((e) => e.toString().trim())
+          .where((e) => e.isNotEmpty)
+          .toSet()
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  DraftStatus? _parseDraftStatus(String raw) {
+    final normalized = raw.trim();
+    if (normalized.isEmpty) return null;
+    for (final status in DraftStatus.values) {
+      if (status.name == normalized) return status;
+    }
+    if (normalized.toLowerCase() == 'completed') return DraftStatus.complete;
+    if (normalized.toLowerCase() == 'not completed') return DraftStatus.draft;
+    return null;
   }
 
   Future<void> _cacheRows(String sheetId, List<SheetRowDto> rows) async {

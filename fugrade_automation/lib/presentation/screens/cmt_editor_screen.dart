@@ -34,16 +34,29 @@ class _CmtEditorScreenState extends State<CmtEditorScreen> {
         BlocListener<CmtEditorBloc, CmtEditorState>(
           listener: (context, state) {
             if (state is CmtEditorSaved) {
-              final msg = state.draft.status == DraftStatus.complete
+              final baseMsg = state.draft.status == DraftStatus.complete
                   ? 'Marked complete · ${state.draft.classCode}'
                   : 'Draft saved · ${state.draft.classCode}';
+              final msg = state.warningMessage ?? '$baseMsg · FINAL synced';
               AppLogger.info(msg, tag: 'CmtEditor');
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(msg)),
+                SnackBar(
+                  content: Text(msg),
+                  backgroundColor:
+                      state.warningMessage == null ? null : AppTheme.ochre,
+                ),
               );
               if (state.draft.status == DraftStatus.complete) {
                 Navigator.of(context).pop();
               }
+            }
+            if (state is CmtEditorActionFailed) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.message),
+                  backgroundColor: AppTheme.rust,
+                ),
+              );
             }
             if (state is CmtEditorEditing &&
                 state.validationErrors.isNotEmpty) {
@@ -212,6 +225,12 @@ class _EditorToolBar extends StatelessWidget {
               ),
             ),
           OutlinedButton.icon(
+            onPressed: () => _openGrading(context),
+            icon: const Icon(Icons.grade_outlined, size: 16),
+            label: const Text('GRADING'),
+          ),
+          const SizedBox(width: 12),
+          OutlinedButton.icon(
             onPressed: () =>
                 context.read<CmtEditorBloc>().add(SaveDraftRequested()),
             icon: const Icon(Icons.save_outlined, size: 16),
@@ -235,6 +254,17 @@ class _EditorToolBar extends StatelessWidget {
     );
   }
 
+  Future<void> _openGrading(BuildContext context) async {
+    final updatedGrades = await showDialog<Map<String, Map<String, double>>>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => _GradingDialog(draft: draft),
+    );
+
+    if (updatedGrades == null || !context.mounted) return;
+    context.read<CmtEditorBloc>().add(GradingUpdated(updatedGrades));
+  }
+
   static String _fmtTime(DateTime t) {
     final h = t.hour.toString().padLeft(2, '0');
     final m = t.minute.toString().padLeft(2, '0');
@@ -242,6 +272,18 @@ class _EditorToolBar extends StatelessWidget {
   }
 
   Future<void> _exportNow(BuildContext context) async {
+    final missing = draft.validateForExport();
+    if (missing.isNotEmpty) {
+      showDialog(
+        context: context,
+        builder: (_) => _ExportMissingFieldsDialog(
+          classCode: draft.classCode,
+          missing: missing,
+        ),
+      );
+      return;
+    }
+
     // Save the current edit state first so the exported .cmt reflects the
     // latest changes the user just typed.
     context.read<CmtEditorBloc>().add(SaveDraftRequested());
@@ -256,41 +298,238 @@ class _EditorToolBar extends StatelessWidget {
   }
 }
 
+class _GradingDialog extends StatefulWidget {
+  final CmtDraftDto draft;
+  const _GradingDialog({required this.draft});
+
+  @override
+  State<_GradingDialog> createState() => _GradingDialogState();
+}
+
+class _GradingDialogState extends State<_GradingDialog> {
+  final Map<String, TextEditingController> _controllers = {};
+  late List<String> _components;
+  bool _dirty = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _components = _resolveComponents(widget.draft);
+    for (final student in widget.draft.students) {
+      for (final component in _components) {
+        final score = widget.draft.grades[student.roll]?[component];
+        _controllers['${student.roll}|$component'] = TextEditingController(
+          text: score == null ? '' : _formatScore(score),
+        );
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final controller in _controllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Row(
+        children: [
+          Kicker(text: 'Grading', number: '§'),
+          Spacer(),
+        ],
+      ),
+      content: SizedBox(
+        width: 860,
+        height: 460,
+        child: Scrollbar(
+          thumbVisibility: true,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: SingleChildScrollView(
+              child: DataTable(
+                columns: [
+                  const DataColumn(label: Text('ROLL')),
+                  const DataColumn(label: Text('NAME')),
+                  for (final component in _components)
+                    DataColumn(label: Text(component.toUpperCase())),
+                ],
+                rows: widget.draft.students.map((student) {
+                  return DataRow(
+                    cells: [
+                      DataCell(Text(student.roll, style: AppTheme.mono(12))),
+                      DataCell(Text(student.name, style: AppTheme.body(12))),
+                      for (final component in _components)
+                        DataCell(
+                          SizedBox(
+                            width: 96,
+                            child: TextField(
+                              controller: _controllers['${student.roll}|$component'],
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(decimal: true),
+                              decoration: const InputDecoration(
+                                isDense: true,
+                                hintText: '0-10',
+                              ),
+                              onChanged: (_) => _dirty = true,
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _cancel,
+          child: const Text('CANCEL'),
+        ),
+        FilledButton(
+          onPressed: _save,
+          child: const Text('SAVE'),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _cancel() async {
+    if (!_dirty) {
+      Navigator.pop(context);
+      return;
+    }
+
+    final discard = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Discard grading changes?'),
+        content: const Text('Unsaved grading values will be discarded.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('KEEP EDITING'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('DISCARD'),
+          ),
+        ],
+      ),
+    );
+
+    if (discard == true && mounted) {
+      Navigator.pop(context);
+    }
+  }
+
+  void _save() {
+    final grades = <String, Map<String, double>>{};
+
+    for (final student in widget.draft.students) {
+      final row = <String, double>{};
+      for (final component in _components) {
+        final raw = _controllers['${student.roll}|$component']?.text.trim() ?? '';
+        if (raw.isEmpty) continue;
+
+        final score = double.tryParse(raw.replaceAll(',', '.'));
+        if (score == null || score < 0 || score > 10) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Invalid score for ${student.roll} / $component. Use 0-10.'),
+              backgroundColor: AppTheme.rust,
+            ),
+          );
+          return;
+        }
+        row[component] = score;
+      }
+      if (row.isNotEmpty) grades[student.roll] = row;
+    }
+
+    Navigator.pop(context, grades);
+  }
+
+  List<String> _resolveComponents(CmtDraftDto draft) {
+    final components = <String>[
+      ...draft.gradingComponents,
+      for (final row in draft.grades.values) ...row.keys,
+    ]
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toSet()
+        .toList();
+    return components.isEmpty
+        ? const ['Component 1', 'Component 2', 'Component 3']
+        : components;
+  }
+
+  String _formatScore(double score) =>
+      score == score.roundToDouble() ? score.toStringAsFixed(0) : score.toString();
+}
+
 class _PopulateFromSheetButton extends StatelessWidget {
   final CmtDraftDto draft;
   const _PopulateFromSheetButton({required this.draft});
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<SheetSyncBloc, SheetSyncState>(
-      builder: (ctx, state) {
-        if (state is! SheetSyncLoaded) return const SizedBox.shrink();
-        final match = state.matchResults.firstWhere(
-          (r) => r.group.classCode == draft.classCode,
-          orElse: () => GroupMatchResult.none(state.matchResults.first.group),
-        );
-        if (match.matchedRow == null) return const SizedBox.shrink();
+    return Row(
+      children: [
+        BlocBuilder<SheetSyncBloc, SheetSyncState>(
+          builder: (ctx, state) {
+            if (state is! SheetSyncLoaded) return const SizedBox.shrink();
+            final match = state.matchResults.firstWhere(
+              (r) => r.group.classCode == draft.classCode,
+              orElse: () => GroupMatchResult.none(state.matchResults.first.group),
+            );
+            if (match.matchedRow == null) return const SizedBox.shrink();
 
-        return Container(
-          decoration: BoxDecoration(
-            border: Border.all(color: AppTheme.accent, width: 1),
-            boxShadow: const [
-              BoxShadow(
-                  offset: Offset(3, 3), color: AppTheme.accent, spreadRadius: -1),
-            ],
-          ),
-          child: FilledButton.icon(
-            onPressed: () => ctx.read<CmtEditorBloc>().add(
-                DraftPopulatedFromSheet(match, match.matchedRow!.contributions)),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppTheme.accent,
-              foregroundColor: AppTheme.paper,
-            ),
-            icon: const Icon(Icons.download_outlined, size: 16),
-            label: const Text('POPULATE FROM SHEET'),
-          ),
-        );
-      },
+            return Row(
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: AppTheme.accent, width: 1),
+                    boxShadow: const [
+                      BoxShadow(
+                        offset: Offset(3, 3),
+                        color: AppTheme.accent,
+                        spreadRadius: -1,
+                      ),
+                    ],
+                  ),
+                  child: FilledButton.icon(
+                    onPressed: () => ctx.read<CmtEditorBloc>().add(
+                          DraftPopulatedFromSheet(
+                            match,
+                            match.matchedRow!.contributions,
+                          ),
+                        ),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppTheme.accent,
+                      foregroundColor: AppTheme.paper,
+                    ),
+                    icon: const Icon(Icons.download_outlined, size: 16),
+                    label: const Text('POPULATE FROM SHEET'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+              ],
+            );
+          },
+        ),
+        OutlinedButton.icon(
+          onPressed: () =>
+              context.read<CmtEditorBloc>().add(DraftPopulatedFromFinalRequested()),
+          icon: const Icon(Icons.fact_check_outlined, size: 16),
+          label: const Text('POPULATE FROM FINAL'),
+        ),
+      ],
     );
   }
 }

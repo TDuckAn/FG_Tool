@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
 using FuGradeHelper.Dtos;
@@ -22,10 +23,6 @@ namespace FuGradeHelper.Commands
                 Console.Error.WriteLine($"File not found: {filePath}");
                 return 1;
             }
-
-            // Quick format validation before full parse
-            var validationResult = ValidateFileHeader(filePath);
-            if (validationResult != 0) return validationResult;
 
             try
             {
@@ -75,19 +72,46 @@ namespace FuGradeHelper.Commands
 
         private static TeacherGradeOutputDto Deserialize(string filePath)
         {
-            using (var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+            using (var stream = OpenFgPayloadStream(filePath))
             {
                 var formatter = new BinaryFormatter
                 {
                     Binder = new FgSerializationBinder()
                 };
 
-                var root = formatter.Deserialize(fs) as TeacherGradeSurrogate;
+                var root = formatter.Deserialize(stream) as TeacherGradeSurrogate;
                 if (root == null)
                     throw new InvalidDataException("Deserialized root object is not TeacherGrade.");
 
                 return MapToDto(root);
             }
+        }
+
+        private static Stream OpenFgPayloadStream(string filePath)
+        {
+            var bytes = File.ReadAllBytes(filePath);
+            if (bytes.Length == 0)
+                throw new InvalidDataException("The .fg file is empty.");
+
+            // Normal FuGrade files are BinaryFormatter streams and start with 0x00.
+            if (bytes[0] == 0x00)
+                return new MemoryStream(bytes, writable: false);
+
+            // Some exported/shared files are base64 text wrapping the real binary .fg
+            // payload. Decode that form instead of rejecting it with a marker error.
+            var text = Encoding.ASCII.GetString(bytes).Trim();
+            try
+            {
+                var decoded = Convert.FromBase64String(text);
+                if (decoded.Length > 0 && decoded[0] == 0x00)
+                    return new MemoryStream(decoded, writable: false);
+            }
+            catch (FormatException)
+            {
+                // Fall through to the clearer invalid-format message below.
+            }
+
+            throw new InvalidDataException("File does not appear to be a valid .fg file. Expected a FuGrade binary stream or base64-encoded FuGrade stream.");
         }
 
         private static TeacherGradeOutputDto MapToDto(TeacherGradeSurrogate root)
@@ -116,6 +140,14 @@ namespace FuGradeHelper.Commands
                         Roll = s.Roll ?? "",
                         Name = s.Name ?? "",
                     });
+                }
+
+                foreach (var componentName in (grp.GradeComponents ?? new List<GradeComponentPlaceholder>())
+                    .Select(c => (c?.Name ?? "").Trim())
+                    .Where(name => !string.IsNullOrWhiteSpace(name))
+                    .Distinct())
+                {
+                    grpDto.GradingComponents.Add(componentName);
                 }
 
                 dto.Groups.Add(grpDto);

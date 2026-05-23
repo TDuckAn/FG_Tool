@@ -14,6 +14,11 @@ SubjectClassGradeDto _$SubjectClassGradeDtoFromJson(
   students: (json['students'] as List<dynamic>)
       .map((e) => StudentDto.fromJson(e as Map<String, dynamic>))
       .toList(),
+  gradingComponents:
+      (json['gradingComponents'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList() ??
+      const [],
 );
 
 Map<String, dynamic> _$SubjectClassGradeDtoToJson(
@@ -22,4 +27,5 @@ Map<String, dynamic> _$SubjectClassGradeDtoToJson(
   'subject': instance.subject,
   'classCode': instance.classCode,
   'students': instance.students,
+  'gradingComponents': instance.gradingComponents,
 };

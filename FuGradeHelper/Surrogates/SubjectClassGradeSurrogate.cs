@@ -9,6 +9,7 @@ namespace FuGradeHelper.Surrogates
         public string Subject { get; private set; }
         public string ClassCode { get; private set; }
         public List<StudentSurrogate> Students { get; private set; }
+        public List<GradeComponentPlaceholder> GradeComponents { get; private set; }
 
         public SubjectClassGradeSurrogate() { }
 
@@ -28,7 +29,12 @@ namespace FuGradeHelper.Surrogates
                 "<Students>k__BackingField", "Students", "students");
             Students = SerializationHelper.AsList<StudentSurrogate>(studentsObj);
 
-            // Components (grade component names) intentionally discarded — out of scope.
+            var componentsObj = SerializationHelper.GetField<object>(info,
+                "<GradeComponents>k__BackingField", "GradeComponents", "gradeComponents",
+                "<Components>k__BackingField", "Components", "components",
+                "<GradeItems>k__BackingField", "GradeItems", "gradeItems",
+                "<GradeDetails>k__BackingField", "GradeDetails", "gradeDetails");
+            GradeComponents = SerializationHelper.AsList<GradeComponentPlaceholder>(componentsObj);
         }
 
         public void GetObjectData(SerializationInfo info, StreamingContext context)
@@ -36,6 +42,7 @@ namespace FuGradeHelper.Surrogates
             info.AddValue("Subject", Subject);
             info.AddValue("ClassCode", ClassCode);
             info.AddValue("Students", Students);
+            info.AddValue("GradeComponents", GradeComponents);
         }
     }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:window_manager/window_manager.dart';
 import 'package:fugrade_automation/core/theme/app_theme.dart';
 import 'package:fugrade_automation/data/datasources/cmt_writer_datasource.dart';
 import 'package:fugrade_automation/data/datasources/fg_parser_datasource.dart';
@@ -13,7 +14,21 @@ import 'package:fugrade_automation/presentation/blocs/fg_loader/fg_loader_bloc.d
 import 'package:fugrade_automation/presentation/blocs/sheet_sync/sheet_sync_bloc.dart';
 import 'package:fugrade_automation/presentation/screens/home_screen.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await windowManager.ensureInitialized();
+
+  const options = WindowOptions(
+    center: true,
+    title: 'FuGrade Automation',
+  );
+
+  windowManager.waitUntilReadyToShow(options, () async {
+    await windowManager.maximize();
+    await windowManager.show();
+    await windowManager.focus();
+  });
+
   runApp(const FuGradeApp());
 }
 
@@ -44,8 +59,10 @@ class FuGradeApp extends StatelessWidget {
             ),
           ),
           BlocProvider(
-            create: (ctx) =>
-                CmtEditorBloc(ctx.read<LocalStorageDatasource>()),
+            create: (ctx) => CmtEditorBloc(
+              ctx.read<LocalStorageDatasource>(),
+              ctx.read<SheetsApiDatasource>(),
+            ),
           ),
           BlocProvider(
             create: (ctx) => ExportBloc(ctx.read<CmtWriterDatasource>()),

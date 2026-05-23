@@ -132,19 +132,40 @@ class _GroupListScreenState extends State<GroupListScreen> {
   }
 
   Future<void> _exportAll(BuildContext context) async {
+    final storage = context.read<LocalStorageDatasource>();
+    final drafts =
+        await storage.loadAllDrafts(widget.grade.semester, widget.grade.login);
+    final completeDrafts =
+        drafts.where((d) => d.status == DraftStatus.complete).toList();
+
+    if (!context.mounted) return;
+    final missing = _firstMissingExportFields(completeDrafts);
+    if (missing != null) {
+      showDialog(
+        context: context,
+        builder: (_) => _ExportMissingFieldsDialog(
+          classCode: missing.$1,
+          missing: missing.$2,
+        ),
+      );
+      return;
+    }
+
     final dir = await FilePicker.platform.getDirectoryPath(
       dialogTitle: 'Select export folder',
     );
     if (dir == null || !context.mounted) return;
 
     context.read<ExportBloc>().add(ExportOutputDirSelected(dir));
+    context.read<ExportBloc>().add(ExportAllRequested(drafts));
+  }
 
-    final storage = context.read<LocalStorageDatasource>();
-    final drafts =
-        await storage.loadAllDrafts(widget.grade.semester, widget.grade.login);
-    if (context.mounted) {
-      context.read<ExportBloc>().add(ExportAllRequested(drafts));
+  (String, List<String>)? _firstMissingExportFields(List<CmtDraftDto> drafts) {
+    for (final draft in drafts) {
+      final missing = draft.validateForExport();
+      if (missing.isNotEmpty) return (draft.classCode, missing);
     }
+    return null;
   }
 }
 
@@ -318,7 +339,12 @@ class _ToolBar extends StatelessWidget {
   }
 
   void _showSheetDialog(BuildContext context) {
-    final ctrl = TextEditingController();
+    final responseCtrl = TextEditingController();
+    final finalCtrl = TextEditingController();
+    context.read<LocalStorageDatasource>().loadConfig().then((config) {
+      responseCtrl.text = (config['responseSheetUrl'] ?? '').toString();
+      finalCtrl.text = (config['finalSheetUrl'] ?? '').toString();
+    });
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -334,16 +360,26 @@ class _ToolBar extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Paste the response sheet URL.',
+              Text('Paste the response sheet URL and optional FINAL sheet URL.',
                   style: AppTheme.body(14, color: AppTheme.inkSoft)),
               const SizedBox(height: 18),
               TextField(
-                controller: ctrl,
+                controller: responseCtrl,
                 style: AppTheme.mono(13),
                 decoration: const InputDecoration(
+                  labelText: 'Google Form Response Sheet URL',
                   hintText: 'https://docs.google.com/spreadsheets/d/…',
                 ),
                 autofocus: true,
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: finalCtrl,
+                style: AppTheme.mono(13),
+                decoration: const InputDecoration(
+                  labelText: 'Google FINAL Sheet URL',
+                  hintText: 'https://docs.google.com/spreadsheets/d/…',
+                ),
               ),
             ],
           ),
@@ -353,10 +389,19 @@ class _ToolBar extends StatelessWidget {
               onPressed: () => Navigator.pop(ctx),
               child: const Text('CANCEL')),
           FilledButton(
-            onPressed: () {
+            onPressed: () async {
+              final responseUrl = responseCtrl.text.trim();
+              final finalUrl = finalCtrl.text.trim();
               Navigator.pop(ctx);
+
+              await context.read<LocalStorageDatasource>().saveSheetUrls(
+                    responseSheetUrl: responseUrl,
+                    finalSheetUrl: finalUrl,
+                  );
+
+              if (!context.mounted) return;
               context.read<SheetSyncBloc>().add(SheetUrlSubmitted(
-                    url: ctrl.text.trim(),
+                    url: responseUrl,
                     fgGroups: grade.capstoneGroups,
                     fgSemester: grade.semester,
                     fgLogin: grade.login,
@@ -504,6 +549,10 @@ class _LedgerHeader extends StatelessWidget {
                   style: AppTheme.label(10, color: AppTheme.paper))),
           SizedBox(
               width: 140,
+              child: Text('COMPLETION',
+                  style: AppTheme.label(10, color: AppTheme.paper))),
+          SizedBox(
+              width: 140,
               child: Text('SHEET MATCH',
                   style: AppTheme.label(10, color: AppTheme.paper))),
           const SizedBox(width: 120),
@@ -587,6 +636,18 @@ class _LedgerRowState extends State<_LedgerRow> {
             ),
             SizedBox(
               width: 140,
+              child: StatusPill(
+                label: widget.draftStatus == DraftStatus.complete
+                    ? 'COMPLETED'
+                    : 'NOT COMPLETED',
+                color: widget.draftStatus == DraftStatus.complete
+                    ? AppTheme.forest
+                    : AppTheme.ochre,
+                filled: widget.draftStatus == DraftStatus.complete,
+              ),
+            ),
+            SizedBox(
+              width: 140,
               child: StatusPill(label: matchLabel, color: matchColor),
             ),
             Tooltip(
@@ -651,6 +712,18 @@ class _LedgerRowState extends State<_LedgerRow> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('No draft yet. Click EDIT to create one first.'),
+        ),
+      );
+      return;
+    }
+
+    final missing = draft.validateForExport();
+    if (missing.isNotEmpty) {
+      showDialog(
+        context: context,
+        builder: (_) => _ExportMissingFieldsDialog(
+          classCode: draft.classCode,
+          missing: missing,
         ),
       );
       return;

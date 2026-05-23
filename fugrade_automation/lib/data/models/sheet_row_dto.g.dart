@@ -22,6 +22,27 @@ SheetRowDto _$SheetRowDtoFromJson(Map<String, dynamic> json) => SheetRowDto(
   contributions: (json['contributions'] as List<dynamic>)
       .map((e) => MemberContributionDto.fromJson(e as Map<String, dynamic>))
       .toList(),
+  status: $enumDecodeNullable(_$DraftStatusEnumMap, json['status']),
+  decisions:
+      (json['decisions'] as List<dynamic>?)
+          ?.map((e) => StudentDecisionDto.fromJson(e as Map<String, dynamic>))
+          .toList() ??
+      const [],
+  grades:
+      (json['grades'] as Map<String, dynamic>?)?.map(
+        (studentId, scores) => MapEntry(
+          studentId,
+          (scores as Map<String, dynamic>).map(
+            (component, score) => MapEntry(component, (score as num).toDouble()),
+          ),
+        ),
+      ) ??
+      const {},
+  gradingComponents:
+      (json['gradingComponents'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList() ??
+      const [],
   timestamp: json['timestamp'] as String?,
 );
 
@@ -40,5 +61,15 @@ Map<String, dynamic> _$SheetRowDtoToJson(SheetRowDto instance) =>
       'limitation': instance.limitation,
       'conclusion': instance.conclusion,
       'contributions': instance.contributions,
+      'status': _$DraftStatusEnumMap[instance.status],
+      'decisions': instance.decisions,
+      'grades': instance.grades,
+      'gradingComponents': instance.gradingComponents,
       'timestamp': instance.timestamp,
     };
+
+const _$DraftStatusEnumMap = {
+  DraftStatus.notStarted: 'notStarted',
+  DraftStatus.draft: 'draft',
+  DraftStatus.complete: 'complete',
+};

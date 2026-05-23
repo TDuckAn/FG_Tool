@@ -29,6 +29,9 @@ namespace FuGradeHelper.Dtos
         [JsonProperty("students")]
         public List<StudentOutputDto> Students { get; set; } = new List<StudentOutputDto>();
 
+        [JsonProperty("gradingComponents")]
+        public List<string> GradingComponents { get; set; } = new List<string>();
+
         [JsonProperty("isCapstone")]
         public bool IsCapstone => System.Text.RegularExpressions.Regex.IsMatch(Subject ?? "", @"(490|491|493)$");
     }

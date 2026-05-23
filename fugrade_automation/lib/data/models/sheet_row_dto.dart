@@ -1,5 +1,7 @@
 import 'package:json_annotation/json_annotation.dart';
 import 'member_contribution_dto.dart';
+import 'student_decision_dto.dart';
+import 'cmt_draft_dto.dart';
 
 part 'sheet_row_dto.g.dart';
 
@@ -26,6 +28,12 @@ class SheetRowDto {
   // Member contributions
   final List<MemberContributionDto> contributions;
 
+  // FINAL sheet persisted editor state.
+  final DraftStatus? status;
+  final List<StudentDecisionDto> decisions;
+  final Map<String, Map<String, double>> grades;
+  final List<String> gradingComponents;
+
   // Timestamp from Google Form submission (for duplicate resolution)
   final String? timestamp;
 
@@ -43,6 +51,10 @@ class SheetRowDto {
     required this.limitation,
     required this.conclusion,
     required this.contributions,
+    this.status,
+    this.decisions = const [],
+    this.grades = const {},
+    this.gradingComponents = const [],
     this.timestamp,
   });
 

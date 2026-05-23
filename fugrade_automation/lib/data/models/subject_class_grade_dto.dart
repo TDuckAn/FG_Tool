@@ -9,11 +9,13 @@ class SubjectClassGradeDto {
   final String subject;
   final String classCode;
   final List<StudentDto> students;
+  final List<String> gradingComponents;
 
   const SubjectClassGradeDto({
     required this.subject,
     required this.classCode,
     required this.students,
+    this.gradingComponents = const [],
   });
 
   bool get isCapstone => isCapstoneSubject(subject);

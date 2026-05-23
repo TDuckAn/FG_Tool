@@ -21,6 +21,9 @@ dependencies:
   # File/folder pickers
   file_picker: ^5.5.0
 
+  # Desktop window management
+  window_manager: ^0.4.3
+
   # Local storage
   path: ^1.9.1
 
