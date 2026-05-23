@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "XFfu5SwR0gY=",
+  "success": true,
+  "projectFilePath": "H:\\Class\\PRM\\FG_Tool\\FG_Tool\\FuGradeHelper\\FuGradeHelper.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Admin\\.nuget\\packages\\newtonsoft.json\\13.0.3\\newtonsoft.json.13.0.3.nupkg.sha512"
+  ],
+  "logs": []
+}

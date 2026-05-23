@@ -1,0 +1,12 @@
+D:\PRM393\FG_Tool\FuGradeHelper\bin\Debug\net48\FuGradeHelper.exe.config
+D:\PRM393\FG_Tool\FuGradeHelper\bin\Debug\net48\FuGradeHelper.exe
+D:\PRM393\FG_Tool\FuGradeHelper\bin\Debug\net48\FuGradeHelper.pdb
+D:\PRM393\FG_Tool\FuGradeHelper\bin\Debug\net48\Newtonsoft.Json.dll
+D:\PRM393\FG_Tool\FuGradeHelper\obj\Debug\net48\FuGradeHelper.csproj.AssemblyReference.cache
+D:\PRM393\FG_Tool\FuGradeHelper\obj\Debug\net48\FuGradeHelper.GeneratedMSBuildEditorConfig.editorconfig
+D:\PRM393\FG_Tool\FuGradeHelper\obj\Debug\net48\FuGradeHelper.AssemblyInfoInputs.cache
+D:\PRM393\FG_Tool\FuGradeHelper\obj\Debug\net48\FuGradeHelper.AssemblyInfo.cs
+D:\PRM393\FG_Tool\FuGradeHelper\obj\Debug\net48\FuGradeHelper.csproj.CoreCompileInputs.cache
+D:\PRM393\FG_Tool\FuGradeHelper\obj\Debug\net48\FuGradeH.2FB67D5F.Up2Date
+D:\PRM393\FG_Tool\FuGradeHelper\obj\Debug\net48\FuGradeHelper.exe
+D:\PRM393\FG_Tool\FuGradeHelper\obj\Debug\net48\FuGradeHelper.pdb
