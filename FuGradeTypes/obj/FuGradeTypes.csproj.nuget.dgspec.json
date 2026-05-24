@@ -1,23 +1,23 @@
 {
   "format": 1,
   "restore": {
-    "H:\\Class\\PRM\\FG_Tool\\FG_Tool\\FuGradeTypes\\FuGradeTypes.csproj": {}
+    "D:\\TAI LIEU\\PRM393\\projects\\FG_Tool\\FuGradeTypes\\FuGradeTypes.csproj": {}
   },
   "projects": {
-    "H:\\Class\\PRM\\FG_Tool\\FG_Tool\\FuGradeTypes\\FuGradeTypes.csproj": {
+    "D:\\TAI LIEU\\PRM393\\projects\\FG_Tool\\FuGradeTypes\\FuGradeTypes.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "H:\\Class\\PRM\\FG_Tool\\FG_Tool\\FuGradeTypes\\FuGradeTypes.csproj",
+        "projectUniqueName": "D:\\TAI LIEU\\PRM393\\projects\\FG_Tool\\FuGradeTypes\\FuGradeTypes.csproj",
         "projectName": "FuGrade",
-        "projectPath": "H:\\Class\\PRM\\FG_Tool\\FG_Tool\\FuGradeTypes\\FuGradeTypes.csproj",
-        "packagesPath": "C:\\Users\\Admin\\.nuget\\packages\\",
-        "outputPath": "H:\\Class\\PRM\\FG_Tool\\FG_Tool\\FuGradeTypes\\obj\\",
+        "projectPath": "D:\\TAI LIEU\\PRM393\\projects\\FG_Tool\\FuGradeTypes\\FuGradeTypes.csproj",
+        "packagesPath": "C:\\Users\\ADMIN\\.nuget\\packages\\",
+        "outputPath": "D:\\TAI LIEU\\PRM393\\projects\\FG_Tool\\FuGradeTypes\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
         ],
         "configFilePaths": [
-          "C:\\Users\\Admin\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\ADMIN\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
@@ -26,7 +26,6 @@
         ],
         "sources": {
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
