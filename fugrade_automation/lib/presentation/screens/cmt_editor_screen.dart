@@ -180,8 +180,8 @@ class _EditorMasthead extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Kicker(
-                text: 'Thesis Comment Â· Editor',
-                number: 'Â§ ${draft.subjectCode}',
+                text: 'Thesis Comment · Editor',
+                number: '§ ${draft.subjectCode}',
               ),
               const SizedBox(height: 8),
               Text(
@@ -906,12 +906,11 @@ class _EditorBody extends StatelessWidget {
               _SectionBlock(
                 number: 'I',
                 title: 'Thesis Titles',
-                subtitle:
-                    'TÃªn Ä‘á» tÃ i báº±ng tiáº¿ng Viá»‡t vÃ  tiáº¿ng Anh',
+                subtitle: 'Thesis titles in Vietnamese and English',
                 children: [
                   _EditorField(
                     field: 'titleVN',
-                    label: 'TÃªn Ä‘á» tÃ i (Tiáº¿ng Viá»‡t)',
+                    label: 'Thesis Title (Vietnamese)',
                     value: draft.titleVN,
                   ),
                   const SizedBox(height: 14),
@@ -925,25 +924,25 @@ class _EditorBody extends StatelessWidget {
               _SectionBlock(
                 number: 'II',
                 title: 'Evaluation',
-                subtitle: 'Nháº­n xÃ©t chi tiáº¿t Â· Pháº§n 3.1 â€” 3.3',
+                subtitle: 'Detailed comments · Sections 3.1 — 3.3',
                 children: [
                   _EditorField(
                     field: 'content',
-                    label: '3.1 Â· Content (Ná»™i dung)',
+                    label: '3.1 · Content',
                     value: draft.content,
                     multiline: true,
                   ),
                   const SizedBox(height: 14),
                   _EditorField(
                     field: 'formComment',
-                    label: '3.2 Â· Form (HÃ¬nh thá»©c)',
+                    label: '3.2 · Form',
                     value: draft.formComment,
                     multiline: true,
                   ),
                   const SizedBox(height: 14),
                   _EditorField(
                     field: 'attitude',
-                    label: '3.3 Â· Attitude (ThÃ¡i Ä‘á»™)',
+                    label: '3.3 · Attitude',
                     value: draft.attitude,
                     multiline: true,
                   ),
@@ -953,25 +952,25 @@ class _EditorBody extends StatelessWidget {
                 number: 'III',
                 title: 'Results & Conclusion',
                 subtitle:
-                    'Káº¿t quáº£ Ä‘áº¡t Ä‘Æ°á»£c, háº¡n cháº¿, káº¿t luáº­n Â· Pháº§n 4.1 â€” 4.2',
+                    'Results achieved, limitations, conclusion · Sections 4.1 — 4.2',
                 children: [
                   _EditorField(
                     field: 'achievement',
-                    label: '4.1 Â· Achievement (Káº¿t quáº£ Ä‘áº¡t Ä‘Æ°á»£c)',
+                    label: '4.1 · Achievement',
                     value: draft.achievement,
                     multiline: true,
                   ),
                   const SizedBox(height: 14),
                   _EditorField(
                     field: 'limitation',
-                    label: '4.2 Â· Limitation (Háº¡n cháº¿)',
+                    label: '4.2 · Limitation',
                     value: draft.limitation,
                     multiline: true,
                   ),
                   const SizedBox(height: 14),
                   _EditorField(
                     field: 'conclusion',
-                    label: 'Conclusion (Káº¿t luáº­n)',
+                    label: 'Conclusion',
                     value: draft.conclusion,
                     multiline: true,
                   ),
@@ -981,7 +980,7 @@ class _EditorBody extends StatelessWidget {
                 number: 'IV',
                 title: 'Defense Decisions',
                 subtitle:
-                    'Quyáº¿t Ä‘á»‹nh cho tá»«ng sinh viÃªn Â· ${draft.students.length} students',
+                    'Decisions for Each Student · ${draft.students.length} students',
                 children: [
                   for (final d in draft.decisions)
                     _DecisionRow(

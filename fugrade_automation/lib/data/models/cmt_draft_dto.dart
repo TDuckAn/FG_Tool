@@ -88,31 +88,30 @@ class CmtDraftDto {
     MatchStatus? matchStatus,
     DateTime? lastEditedAt,
     DateTime? exportedAt,
-  }) =>
-      CmtDraftDto(
-        teacherLogin: teacherLogin,
-        semester: semester,
-        subjectCode: subjectCode,
-        classCode: classCode,
-        students: students,
-        fgVersion: fgVersion,
-        titleVN: titleVN ?? this.titleVN,
-        titleEN: titleEN ?? this.titleEN,
-        content: content ?? this.content,
-        formComment: formComment ?? this.formComment,
-        attitude: attitude ?? this.attitude,
-        achievement: achievement ?? this.achievement,
-        limitation: limitation ?? this.limitation,
-        conclusion: conclusion ?? this.conclusion,
-        decisions: decisions ?? this.decisions,
-        contributions: contributions ?? this.contributions,
-        grades: grades ?? this.grades,
-        gradingComponents: gradingComponents ?? this.gradingComponents,
-        status: status ?? this.status,
-        matchStatus: matchStatus ?? this.matchStatus,
-        lastEditedAt: lastEditedAt ?? this.lastEditedAt,
-        exportedAt: exportedAt ?? this.exportedAt,
-      );
+  }) => CmtDraftDto(
+    teacherLogin: teacherLogin,
+    semester: semester,
+    subjectCode: subjectCode,
+    classCode: classCode,
+    students: students,
+    fgVersion: fgVersion,
+    titleVN: titleVN ?? this.titleVN,
+    titleEN: titleEN ?? this.titleEN,
+    content: content ?? this.content,
+    formComment: formComment ?? this.formComment,
+    attitude: attitude ?? this.attitude,
+    achievement: achievement ?? this.achievement,
+    limitation: limitation ?? this.limitation,
+    conclusion: conclusion ?? this.conclusion,
+    decisions: decisions ?? this.decisions,
+    contributions: contributions ?? this.contributions,
+    grades: grades ?? this.grades,
+    gradingComponents: gradingComponents ?? this.gradingComponents,
+    status: status ?? this.status,
+    matchStatus: matchStatus ?? this.matchStatus,
+    lastEditedAt: lastEditedAt ?? this.lastEditedAt,
+    exportedAt: exportedAt ?? this.exportedAt,
+  );
 
   factory CmtDraftDto.fromJson(Map<String, dynamic> json) =>
       _$CmtDraftDtoFromJson(json);
@@ -123,14 +122,15 @@ class CmtDraftDto {
   /// Empty list means the draft is valid for export.
   List<String> validateForExport() {
     final issues = <String>[];
-    if (titleVN.trim().isEmpty) issues.add('TitleVN — Tên đề tài (Tiếng Việt)');
+    if (titleVN.trim().isEmpty)
+      issues.add('TitleVN — Thesis title (Vietnamese)');
     if (titleEN.trim().isEmpty) issues.add('TitleEN — Thesis title (English)');
-    if (content.trim().isEmpty) issues.add('3.1 Content — Nội dung');
-    if (formComment.trim().isEmpty) issues.add('3.2 Form — Hình thức');
-    if (attitude.trim().isEmpty) issues.add('3.3 Attitude — Thái độ');
-    if (achievement.trim().isEmpty) issues.add('4.1 Achievement — Kết quả đạt được');
-    if (limitation.trim().isEmpty) issues.add('4.2 Limitation — Hạn chế');
-    if (conclusion.trim().isEmpty) issues.add('Conclusion — Kết luận');
+    if (content.trim().isEmpty) issues.add('3.1 Content');
+    if (formComment.trim().isEmpty) issues.add('3.2 Form');
+    if (attitude.trim().isEmpty) issues.add('3.3 Attitude');
+    if (achievement.trim().isEmpty) issues.add('4.1 Achievement');
+    if (limitation.trim().isEmpty) issues.add('4.2 Limitation');
+    if (conclusion.trim().isEmpty) issues.add('Conclusion');
     return issues;
   }
 }

@@ -75,8 +75,7 @@ class HomeScreen extends StatelessWidget {
                           ConstrainedBox(
                             constraints: const BoxConstraints(maxWidth: 480),
                             child: Text(
-                              'Tự động hoá quy trình tạo file nhận xét '
-                              'capstone cho FU Grading Editor 1.1.',
+                              'Automates capstone comment file creation for FU Grading Editor 1.1.',
                               textAlign: TextAlign.center,
                               style: AppTheme.body(
                                 15,

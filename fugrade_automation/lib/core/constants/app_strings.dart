@@ -8,8 +8,8 @@ class AppStrings {
   static const String conclusion = 'Conclusion';
   static const String section43 = '4.3  Defense Decisions';
 
-  // Contribution block header (Vietnamese)
-  static const String contributionHeader = 'Mức đóng góp của các thành viên:';
+  // Contribution block header
+  static const String contributionHeader = 'Member contributions:';
 
   // Match status labels
   static const String matchExact = 'Matched';
