@@ -57,13 +57,24 @@ class SheetsApiDatasource {
     'timestamp': ['timestamp', 'thời gian'],
     'status': ['status', 'completion', 'completed'],
     'contributionsJson': ['contributionsjson', 'contributions json'],
+    'contributions': [
+      'contributions',
+      'contribution',
+      'member contributions',
+      'member contribution',
+      'đóng góp',
+      'đóng góp thành viên',
+      'student contribution',
+      'student roll number',
+      'student roll number - % contribution',
+    ],
     'decisionsJson': ['decisionsjson', 'decisions json'],
     'gradesJson': ['gradesjson', 'grades json'],
     'gradingComponentsJson': [
       'gradingcomponentsjson',
       'grading components json',
       'componentsjson',
-      'components json'
+      'components json',
     ],
   };
 
@@ -72,8 +83,21 @@ class SheetsApiDatasource {
     final exeDir = p.dirname(Platform.resolvedExecutable);
     String? jsonPath;
     for (final candidate in [
-      p.join(exeDir, 'data', 'flutter_assets', 'assets', 'helper', 'service_account.json'),
-      p.join(exeDir, 'flutter_assets', 'assets', 'helper', 'service_account.json'),
+      p.join(
+        exeDir,
+        'data',
+        'flutter_assets',
+        'assets',
+        'helper',
+        'service_account.json',
+      ),
+      p.join(
+        exeDir,
+        'flutter_assets',
+        'assets',
+        'helper',
+        'service_account.json',
+      ),
     ]) {
       if (await File(candidate).exists()) {
         jsonPath = candidate;
@@ -82,24 +106,60 @@ class SheetsApiDatasource {
     }
     if (jsonPath == null) {
       throw SheetsApiException(
-          'service_account.json not found. Reinstall the application.');
+        'service_account.json not found. Reinstall the application.',
+      );
     }
 
     final credentials = ServiceAccountCredentials.fromJson(
-        jsonDecode(await File(jsonPath).readAsString()));
+      jsonDecode(await File(jsonPath).readAsString()),
+    );
     final client = await clientViaServiceAccount(credentials, _scopes);
     return SheetsApi(client);
   }
 
+  /// Parses a paragraph like "SE160015 - 50\nSE160020 - 30" into contributions.
+  /// Lines that do not match the expected pattern are skipped.
+  static List<MemberContributionDto> parseContributionParagraph(String text) {
+    final result = <MemberContributionDto>[];
+    for (final rawLine in text.split('\n')) {
+      final line = rawLine.trim();
+      if (line.isEmpty) continue;
+      final match = RegExp(
+        r'^([A-Za-z]{1,3}\d{5,})\s*-\s*(\d+(?:[.,]\d+)?)$',
+      ).firstMatch(line);
+      if (match == null) continue;
+      final roll = match.group(1)!.toUpperCase();
+      final pct = double.tryParse(match.group(2)!.replaceAll(',', '.'));
+      if (pct != null) {
+        result.add(MemberContributionDto(roll: roll, percentage: pct));
+      }
+    }
+    return result;
+  }
+
   /// Extracts the spreadsheet ID from a full Google Sheets URL.
   static String extractSheetId(String url) {
-    final match =
-        RegExp(r'/spreadsheets/d/([a-zA-Z0-9_-]+)').firstMatch(url);
+    final match = RegExp(r'/spreadsheets/d/([a-zA-Z0-9_-]+)').firstMatch(url);
     if (match == null) throw SheetsApiException('Invalid Google Sheets URL.');
     return match.group(1)!;
   }
 
-  Future<void> saveDraftToFinalSheet(String sheetIdOrUrl, CmtDraftDto draft) async {
+  /// Converts a 1-based column count to the letter of the last column.
+  /// E.g. 1->"A", 18->"R", 26->"Z", 27->"AA".
+  static String _colLetter(int colCount) {
+    var col = colCount - 1;
+    var result = '';
+    do {
+      result = String.fromCharCode(65 + col % 26) + result;
+      col = col ~/ 26 - 1;
+    } while (col >= 0);
+    return result;
+  }
+
+  Future<void> saveDraftToFinalSheet(
+    String sheetIdOrUrl,
+    CmtDraftDto draft,
+  ) async {
     final sheetId = sheetIdOrUrl.contains('/')
         ? extractSheetId(sheetIdOrUrl)
         : sheetIdOrUrl;
@@ -112,92 +172,117 @@ class SheetsApiDatasource {
     }
     final tabName = sheets.first.properties?.title ?? 'FINAL';
 
-    final row = _buildFinalRow(draft);
-    final existing = await api.spreadsheets.values.get(sheetId, '$tabName!A:R');
+    final existing = await api.spreadsheets.values.get(sheetId, tabName);
     final rawRows = existing.values ?? [];
 
+    List<String> headers;
     if (rawRows.isEmpty) {
+      headers = List<String>.from(_finalHeaders);
       await api.spreadsheets.values.update(
-        ValueRange(values: [_finalHeaders, row]),
+        ValueRange(values: [headers]),
         sheetId,
-        '$tabName!A1:R2',
+        '$tabName!A1',
         valueInputOption: 'USER_ENTERED',
       );
-      return;
+    } else {
+      headers = rawRows.first.map((h) => h.toString().trim()).toList();
     }
 
-    final headers = rawRows.first.map((h) => h.toString().trim()).toList();
     final colIndex = _buildColumnIndex(headers);
-    if (!_hasFinalMatchColumns(colIndex)) {
+
+    final missing = _finalHeaders
+        .where((k) => !colIndex.containsKey(k))
+        .toList();
+    if (missing.isNotEmpty) {
+      for (final key in missing) {
+        colIndex[key] = headers.length;
+        headers.add(key);
+      }
+
       await api.spreadsheets.values.update(
-        ValueRange(values: [_finalHeaders]),
+        ValueRange(values: [headers]),
         sheetId,
-        '$tabName!A1:R1',
+        '$tabName!A1:${_colLetter(headers.length)}1',
         valueInputOption: 'USER_ENTERED',
       );
     }
+
+    final rowData = List<Object?>.filled(headers.length, '');
+
+    void set(String key, Object? value) {
+      final idx = colIndex[key];
+      if (idx != null && idx < rowData.length) rowData[idx] = value ?? '';
+    }
+
+    set('timestamp', DateTime.now().toIso8601String());
+    set('semester', draft.semester);
+    set('subjectCode', draft.subjectCode);
+    set('classCode', draft.classCode);
+    set('teacher', draft.teacherLogin);
+    set('titleVN', draft.titleVN);
+    set('titleEN', draft.titleEN);
+    set('content', draft.content);
+    set('form', draft.formComment);
+    set('attitude', draft.attitude);
+    set('achievement', draft.achievement);
+    set('limitation', draft.limitation);
+    set('conclusion', draft.conclusion);
+    set('status', draft.status.name);
+
+    if (colIndex.containsKey('contributions')) {
+      final paragraph = draft.contributions
+          .map((c) {
+            final pct = c.percentage == c.percentage.roundToDouble()
+                ? c.percentage.toStringAsFixed(0)
+                : c.percentage.toString();
+            return '${c.roll} - $pct';
+          })
+          .join('\n');
+      set('contributions', paragraph);
+    }
+
+    set(
+      'contributionsJson',
+      jsonEncode(draft.contributions.map((e) => e.toJson()).toList()),
+    );
+    set(
+      'decisionsJson',
+      jsonEncode(draft.decisions.map((e) => e.toJson()).toList()),
+    );
+    set('gradesJson', jsonEncode(draft.grades));
+    set(
+      'gradingComponentsJson',
+      jsonEncode(_effectiveGradingComponents(draft)),
+    );
 
     final rowNumber = _findFinalRowNumber(rawRows, colIndex, draft);
+    final maxCol = _colLetter(headers.length);
     if (rowNumber == null) {
       await api.spreadsheets.values.append(
-        ValueRange(values: [row]),
+        ValueRange(values: [rowData]),
         sheetId,
-        '$tabName!A:R',
+        '$tabName!A:$maxCol',
         valueInputOption: 'USER_ENTERED',
         insertDataOption: 'INSERT_ROWS',
       );
     } else {
       await api.spreadsheets.values.update(
-        ValueRange(values: [row]),
+        ValueRange(values: [rowData]),
         sheetId,
-        '$tabName!A$rowNumber:R$rowNumber',
+        '$tabName!A$rowNumber:$maxCol$rowNumber',
         valueInputOption: 'USER_ENTERED',
       );
     }
-  }
-
-  List<Object?> _buildFinalRow(CmtDraftDto draft) {
-    return [
-      DateTime.now().toIso8601String(),
-      draft.semester,
-      draft.subjectCode,
-      draft.classCode,
-      draft.teacherLogin,
-      draft.titleVN,
-      draft.titleEN,
-      draft.content,
-      draft.formComment,
-      draft.attitude,
-      draft.achievement,
-      draft.limitation,
-      draft.conclusion,
-      draft.status.name,
-      jsonEncode(draft.contributions.map((e) => e.toJson()).toList()),
-      jsonEncode(draft.decisions.map((e) => e.toJson()).toList()),
-      jsonEncode(draft.grades),
-      jsonEncode(_effectiveGradingComponents(draft)),
-    ];
   }
 
   List<String> _effectiveGradingComponents(CmtDraftDto draft) {
     final components = <String>[
       ...draft.gradingComponents,
       for (final row in draft.grades.values) ...row.keys,
-    ]
-        .map((e) => e.trim())
-        .where((e) => e.isNotEmpty)
-        .toSet()
-        .toList();
+    ].map((e) => e.trim()).where((e) => e.isNotEmpty).toSet().toList();
     return components.isEmpty
         ? const ['Component 1', 'Component 2', 'Component 3']
         : components;
-  }
-
-  bool _hasFinalMatchColumns(Map<String, int> colIndex) {
-    return colIndex.containsKey('semester') &&
-        colIndex.containsKey('subjectCode') &&
-        colIndex.containsKey('classCode') &&
-        colIndex.containsKey('teacher');
   }
 
   int? _findFinalRowNumber(
@@ -205,11 +290,11 @@ class SheetsApiDatasource {
     Map<String, int> colIndex,
     CmtDraftDto draft,
   ) {
-    if (!_hasFinalMatchColumns(colIndex)) return null;
-
     String cell(List<Object?> row, String key) {
       final index = colIndex[key];
-      return index != null && index < row.length ? row[index].toString().trim() : '';
+      return index != null && index < row.length
+          ? row[index].toString().trim()
+          : '';
     }
 
     for (var i = 1; i < rawRows.length; i++) {
@@ -241,8 +326,9 @@ class SheetsApiDatasource {
     }
     final tabName = sheets.first.properties?.title ?? 'Sheet1';
     AppLogger.info(
-        'Reading sheet "$tabName" (${sheets.length} tab(s) available)',
-        tag: 'Sheets');
+      'Reading sheet "$tabName" (${sheets.length} tab(s) available)',
+      tag: 'Sheets',
+    );
 
     final response = await api.spreadsheets.values.get(sheetId, tabName);
     final rawRows = response.values;
@@ -254,7 +340,10 @@ class SheetsApiDatasource {
     final headers = rawRows.first.map((h) => h.toString().trim()).toList();
     AppLogger.info('Headers: ${headers.join(" | ")}', tag: 'Sheets');
     final colIndex = _buildColumnIndex(headers);
-    AppLogger.info('Mapped columns: ${colIndex.keys.join(", ")}', tag: 'Sheets');
+    AppLogger.info(
+      'Mapped columns: ${colIndex.keys.join(", ")}',
+      tag: 'Sheets',
+    );
 
     final rows = <SheetRowDto>[];
     int skipped = 0;
@@ -271,8 +360,9 @@ class SheetsApiDatasource {
       }
     }
     AppLogger.info(
-        'Parsed ${rows.length} row(s); skipped $skipped row(s) with missing match keys',
-        tag: 'Sheets');
+      'Parsed ${rows.length} row(s); skipped $skipped row(s) with missing match keys',
+      tag: 'Sheets',
+    );
 
     await _cacheRows(sheetId, rows);
     return rows;
@@ -294,7 +384,7 @@ class SheetsApiDatasource {
     for (int i = 0; i < headers.length; i++) {
       final h = headers[i].toLowerCase().trim();
       for (final entry in _colAliases.entries) {
-        if (entry.value.contains(h)) {
+        if (entry.value.any((alias) => h == alias || h.startsWith(alias))) {
           index[entry.key] = i;
           break;
         }
@@ -322,8 +412,10 @@ class SheetsApiDatasource {
     final subjectCode = get('subjectCode');
     final classCode = get('classCode');
     final teacher = get('teacher');
-    if (semester.isEmpty || subjectCode.isEmpty ||
-        classCode.isEmpty || teacher.isEmpty) {
+    if (semester.isEmpty ||
+        subjectCode.isEmpty ||
+        classCode.isEmpty ||
+        teacher.isEmpty) {
       return null;
     }
 
@@ -336,6 +428,9 @@ class SheetsApiDatasource {
           contributions.add(MemberContributionDto(roll: roll, percentage: pct));
         }
       }
+    }
+    if (contributions.isEmpty) {
+      contributions.addAll(parseContributionParagraph(get('contributions')));
     }
 
     final gradingComponents = _parseStringList(get('gradingComponentsJson'));
@@ -400,11 +495,15 @@ class SheetsApiDatasource {
       final decoded = jsonDecode(raw);
       if (decoded is! Map) return {};
       return decoded.map((studentId, scores) {
-        if (scores is! Map) return MapEntry(studentId.toString(), <String, double>{});
+        if (scores is! Map) {
+          return MapEntry(studentId.toString(), <String, double>{});
+        }
         return MapEntry(
           studentId.toString(),
           scores.map((component, score) {
-            final parsed = score is num ? score.toDouble() : double.tryParse(score.toString());
+            final parsed = score is num
+                ? score.toDouble()
+                : double.tryParse(score.toString());
             return MapEntry(component.toString(), parsed ?? 0);
           }),
         );
@@ -442,21 +541,33 @@ class SheetsApiDatasource {
 
   Future<void> _cacheRows(String sheetId, List<SheetRowDto> rows) async {
     try {
-      final appData = Directory(Platform.environment['APPDATA'] ?? Directory.systemTemp.path);
+      final appData = Directory(
+        Platform.environment['APPDATA'] ?? Directory.systemTemp.path,
+      );
       final date = DateTime.now().toIso8601String().substring(0, 10);
-      final file = File(p.join(appData.path, 'fugrade_automation',
-          'sheets_cache', '${sheetId}_$date.json'));
+      final file = File(
+        p.join(
+          appData.path,
+          'fugrade_automation',
+          'sheets_cache',
+          '${sheetId}_$date.json',
+        ),
+      );
       await file.parent.create(recursive: true);
       await file.writeAsString(
-          jsonEncode(rows.map((r) => r.toJson()).toList()));
+        jsonEncode(rows.map((r) => r.toJson()).toList()),
+      );
     } catch (_) {}
   }
 
   Future<List<SheetRowDto>?> _loadCache(String sheetId) async {
     try {
-      final appData = Directory(Platform.environment['APPDATA'] ?? Directory.systemTemp.path);
-      final cacheDir = Directory(p.join(
-          appData.path, 'fugrade_automation', 'sheets_cache'));
+      final appData = Directory(
+        Platform.environment['APPDATA'] ?? Directory.systemTemp.path,
+      );
+      final cacheDir = Directory(
+        p.join(appData.path, 'fugrade_automation', 'sheets_cache'),
+      );
       if (!await cacheDir.exists()) return null;
 
       final files = await cacheDir

@@ -47,5 +47,22 @@ namespace FuGradeHelper.Surrogates
 
             return new List<T>();
         }
+
+        public static void CaptureRawFields(SerializationInfo info, Dictionary<string, object> raw)
+        {
+            foreach (SerializationEntry entry in info)
+                if (!raw.ContainsKey(entry.Name))
+                    raw[entry.Name] = entry.Value;
+        }
+
+        public static void AddRawValues(
+            SerializationInfo info,
+            Dictionary<string, object> raw,
+            HashSet<string> knownKeys)
+        {
+            foreach (var kv in raw)
+                if (!knownKeys.Contains(kv.Key))
+                    info.AddValue(kv.Key, kv.Value);
+        }
     }
 }

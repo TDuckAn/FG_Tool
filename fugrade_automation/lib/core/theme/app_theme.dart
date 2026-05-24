@@ -10,22 +10,24 @@ import 'package:flutter/services.dart';
 ///   • Mono:    Cascadia Mono (Windows Terminal default, Windows 10+)
 class AppTheme {
   // ── Palette ───────────────────────────────────────────────────────────────
-  static const Color paper = Color(0xFFF5EFE4);      // warm cream base
-  static const Color paperDeep = Color(0xFFEAE2D2);  // slightly darker for surface variants
-  static const Color card = Color(0xFFFBF7EE);       // floats above paper
-  static const Color ink = Color(0xFF1A1714);        // warm near-black
-  static const Color inkSoft = Color(0xFF4A433B);    // for secondary text
-  static const Color inkMuted = Color(0xFF8A8175);   // for tertiary text / hints
-  static const Color rule = Color(0xFFD9CFBE);       // hairline dividers
+  static const Color paper = Color(0xFFF5EFE4); // warm cream base
+  static const Color paperDeep = Color(
+    0xFFEAE2D2,
+  ); // slightly darker for surface variants
+  static const Color card = Color(0xFFFBF7EE); // floats above paper
+  static const Color ink = Color(0xFF1A1714); // warm near-black
+  static const Color inkSoft = Color(0xFF4A433B); // for secondary text
+  static const Color inkMuted = Color(0xFF8A8175); // for tertiary text / hints
+  static const Color rule = Color(0xFFD9CFBE); // hairline dividers
 
   // Accent: deep burgundy (the *ink stamp* of an academic seal)
   static const Color accent = Color(0xFF6E1F22);
   static const Color accentSoft = Color(0xFFF3E0DD);
 
   // Semantic
-  static const Color forest = Color(0xFF3B5F3D);     // matched / complete
-  static const Color ochre = Color(0xFFB97A2C);      // partial / draft
-  static const Color rust = Color(0xFF8C3A2A);       // no match / error
+  static const Color forest = Color(0xFF3B5F3D); // matched / complete
+  static const Color ochre = Color(0xFFB97A2C); // partial / draft
+  static const Color rust = Color(0xFF8C3A2A); // no match / error
 
   // Legacy aliases used elsewhere in the codebase
   static const Color colorNotStarted = inkMuted;
@@ -43,76 +45,81 @@ class AppTheme {
 
   static const List<String> _serifFamily = [
     'Cambria',
-    'Georgia',
     'Times New Roman',
+    'Georgia',
     'serif',
   ];
   static const List<String> _sansFamily = [
     'Bahnschrift',
-    'Segoe UI Variable',
     'Segoe UI',
-    'Helvetica Neue',
+    'Segoe UI Variable',
     'Arial',
+    'Helvetica Neue',
     'sans-serif',
   ];
   static const List<String> _monoFamily = [
     'Cascadia Mono',
     'Consolas',
-    'JetBrains Mono',
     'Courier New',
     'monospace',
   ];
 
-  static TextStyle display(double size,
-          {FontWeight weight = FontWeight.w500,
-          Color? color,
-          double? height}) =>
-      TextStyle(
-        fontFamily: _serifFamily.first,
-        fontFamilyFallback: _serifFamily.sublist(1),
-        fontSize: size,
-        fontWeight: weight,
-        color: color ?? ink,
-        height: height,
-        letterSpacing: -size * 0.015,
-      );
+  static TextStyle display(
+    double size, {
+    FontWeight weight = FontWeight.w500,
+    Color? color,
+    double? height,
+  }) => TextStyle(
+    fontFamily: _serifFamily.first,
+    fontFamilyFallback: _serifFamily.sublist(1),
+    fontSize: size,
+    fontWeight: weight,
+    color: color ?? ink,
+    height: height,
+    letterSpacing: -size * 0.015,
+  );
 
-  static TextStyle body(double size,
-          {FontWeight weight = FontWeight.w400,
-          Color? color,
-          double? height}) =>
-      TextStyle(
-        fontFamily: _sansFamily.first,
-        fontFamilyFallback: _sansFamily.sublist(1),
-        fontSize: size,
-        fontWeight: weight,
-        color: color ?? ink,
-        height: height ?? 1.45,
-      );
+  static TextStyle body(
+    double size, {
+    FontWeight weight = FontWeight.w400,
+    Color? color,
+    double? height,
+  }) => TextStyle(
+    fontFamily: _sansFamily.first,
+    fontFamilyFallback: _sansFamily.sublist(1),
+    fontSize: size,
+    fontWeight: weight,
+    color: color ?? ink,
+    height: height ?? 1.45,
+  );
 
-  static TextStyle mono(double size,
-          {FontWeight weight = FontWeight.w500, Color? color}) =>
-      TextStyle(
-        fontFamily: _monoFamily.first,
-        fontFamilyFallback: _monoFamily.sublist(1),
-        fontSize: size,
-        fontWeight: weight,
-        color: color ?? ink,
-        letterSpacing: 0,
-      );
+  static TextStyle mono(
+    double size, {
+    FontWeight weight = FontWeight.w500,
+    Color? color,
+  }) => TextStyle(
+    fontFamily: _monoFamily.first,
+    fontFamilyFallback: _monoFamily.sublist(1),
+    fontSize: size,
+    fontWeight: weight,
+    color: color ?? ink,
+    letterSpacing: 0,
+  );
 
   /// Editorial all-caps label — small with wide tracking, like a journal kicker.
-  static TextStyle label(double size,
-          {FontWeight weight = FontWeight.w600, Color? color}) =>
-      TextStyle(
-        fontFamily: _sansFamily.first,
-        fontFamilyFallback: _sansFamily.sublist(1),
-        fontSize: size,
-        fontWeight: weight,
-        color: color ?? inkSoft,
-        letterSpacing: 1.6,
-        height: 1.2,
-      );
+  static TextStyle label(
+    double size, {
+    FontWeight weight = FontWeight.w600,
+    Color? color,
+  }) => TextStyle(
+    fontFamily: _sansFamily.first,
+    fontFamilyFallback: _sansFamily.sublist(1),
+    fontSize: size,
+    fontWeight: weight,
+    color: color ?? inkSoft,
+    letterSpacing: 1.6,
+    height: 1.2,
+  );
 
   // ── ThemeData ─────────────────────────────────────────────────────────────
   static ThemeData get light {
@@ -223,8 +230,10 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: card,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 14,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(2),
           borderSide: const BorderSide(color: rule, width: 1),
@@ -331,8 +340,10 @@ class Kicker extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         if (number != null) ...[
-          Text(number!,
-              style: AppTheme.mono(11, color: c, weight: FontWeight.w600)),
+          Text(
+            number!,
+            style: AppTheme.mono(11, color: c, weight: FontWeight.w600),
+          ),
           const SizedBox(width: 10),
           Container(width: 18, height: 1, color: c),
           const SizedBox(width: 10),

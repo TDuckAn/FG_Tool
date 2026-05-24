@@ -47,6 +47,11 @@ class GradingUpdated extends CmtEditorEvent {
   GradingUpdated(this.grades);
 }
 
+class ContributionsManuallyUpdated extends CmtEditorEvent {
+  final List<MemberContributionDto> contributions;
+  ContributionsManuallyUpdated(this.contributions);
+}
+
 class MarkCompleteRequested extends CmtEditorEvent {}
 
 class SaveDraftRequested extends CmtEditorEvent {}
@@ -67,11 +72,7 @@ class CmtEditorSaved extends CmtEditorState {
   final CmtDraftDto draft;
   final bool finalSynced;
   final String? warningMessage;
-  CmtEditorSaved(
-    this.draft, {
-    this.finalSynced = false,
-    this.warningMessage,
-  });
+  CmtEditorSaved(this.draft, {this.finalSynced = false, this.warningMessage});
 }
 
 class CmtEditorActionFailed extends CmtEditorState {
@@ -94,45 +95,62 @@ class CmtEditorBloc extends Bloc<CmtEditorEvent, CmtEditorState> {
     on<DecisionUpdated>(_onDecisionUpdated);
     on<NoteUpdated>(_onNoteUpdated);
     on<GradingUpdated>(_onGradingUpdated);
+    on<ContributionsManuallyUpdated>(_onContributionsManuallyUpdated);
     on<MarkCompleteRequested>(_onMarkComplete);
     on<SaveDraftRequested>(_onSaveDraft);
   }
 
-  CmtDraftDto? get _current =>
-      state is CmtEditorEditing ? (state as CmtEditorEditing).draft : null;
+  CmtDraftDto? get _current {
+    if (state is CmtEditorEditing) return (state as CmtEditorEditing).draft;
+    if (state is CmtEditorSaved) return (state as CmtEditorSaved).draft;
+    if (state is CmtEditorActionFailed) {
+      return (state as CmtEditorActionFailed).draft;
+    }
+    return null;
+  }
 
   void _onPopulateFromSheet(
-      DraftPopulatedFromSheet event, Emitter<CmtEditorState> emit) {
+    DraftPopulatedFromSheet event,
+    Emitter<CmtEditorState> emit,
+  ) {
     final draft = _current;
     if (draft == null || event.matchResult.matchedRow == null) return;
     final row = event.matchResult.matchedRow!;
-    emit(CmtEditorEditing(draft.copyWith(
-      titleVN: row.titleVN,
-      titleEN: row.titleEN,
-      content: row.content,
-      formComment: row.form,
-      attitude: row.attitude,
-      achievement: row.achievement,
-      limitation: row.limitation,
-      conclusion: row.conclusion,
-      contributions: event.contributions,
-      matchStatus: event.matchResult.matchStatus,
-      status: DraftStatus.draft,
-      lastEditedAt: DateTime.now(),
-    )));
+    emit(
+      CmtEditorEditing(
+        draft.copyWith(
+          titleVN: row.titleVN,
+          titleEN: row.titleEN,
+          content: row.content,
+          formComment: row.form,
+          attitude: row.attitude,
+          achievement: row.achievement,
+          limitation: row.limitation,
+          conclusion: row.conclusion,
+          contributions: event.contributions,
+          matchStatus: event.matchResult.matchStatus,
+          status: DraftStatus.draft,
+          lastEditedAt: DateTime.now(),
+        ),
+      ),
+    );
   }
 
   Future<void> _onPopulateFromFinal(
-      DraftPopulatedFromFinalRequested event, Emitter<CmtEditorState> emit) async {
+    DraftPopulatedFromFinalRequested event,
+    Emitter<CmtEditorState> emit,
+  ) async {
     final draft = _current;
     if (draft == null) return;
 
     final finalSheetUrl = await _storage.loadFinalSheetUrl();
     if (finalSheetUrl.trim().isEmpty) {
-      emit(CmtEditorActionFailed(
-        draft,
-        'FINAL sheet URL is not configured. Connect the FINAL sheet first.',
-      ));
+      emit(
+        CmtEditorActionFailed(
+          draft,
+          'FINAL sheet URL is not configured. Connect the FINAL sheet first.',
+        ),
+      );
       emit(CmtEditorEditing(draft));
       return;
     }
@@ -140,44 +158,59 @@ class CmtEditorBloc extends Bloc<CmtEditorEvent, CmtEditorState> {
     try {
       final rows = await _sheets.fetchRows(finalSheetUrl);
       final row = rows.cast<dynamic>().firstWhere(
-            (r) =>
-                r.semester == draft.semester &&
-                r.subjectCode == draft.subjectCode &&
-                r.classCode == draft.classCode &&
-                r.teacher == draft.teacherLogin,
-            orElse: () => null,
-          );
+        (r) =>
+            r.semester == draft.semester &&
+            r.subjectCode == draft.subjectCode &&
+            r.classCode == draft.classCode &&
+            r.teacher == draft.teacherLogin,
+        orElse: () => null,
+      );
       if (row == null) {
-        emit(CmtEditorActionFailed(
-          draft,
-          'No matching FINAL row found for ${draft.classCode}.',
-        ));
+        emit(
+          CmtEditorActionFailed(
+            draft,
+            'No matching FINAL row found for ${draft.classCode}.',
+          ),
+        );
         emit(CmtEditorEditing(draft));
         return;
       }
 
-      emit(CmtEditorEditing(draft.copyWith(
-        titleVN: row.titleVN,
-        titleEN: row.titleEN,
-        content: row.content,
-        formComment: row.form,
-        attitude: row.attitude,
-        achievement: row.achievement,
-        limitation: row.limitation,
-        conclusion: row.conclusion,
-        contributions: row.contributions,
-        decisions: row.decisions.isNotEmpty ? row.decisions : draft.decisions,
-        grades: row.grades,
-        gradingComponents: row.gradingComponents,
-        status: row.status ?? DraftStatus.draft,
-        lastEditedAt: DateTime.now(),
-      )));
+      emit(
+        CmtEditorEditing(
+          draft.copyWith(
+            titleVN: row.titleVN,
+            titleEN: row.titleEN,
+            content: row.content,
+            formComment: row.form,
+            attitude: row.attitude,
+            achievement: row.achievement,
+            limitation: row.limitation,
+            conclusion: row.conclusion,
+            contributions: row.contributions,
+            decisions: row.decisions.isNotEmpty
+                ? row.decisions
+                : draft.decisions,
+            grades: row.grades,
+            gradingComponents: row.gradingComponents,
+            status: row.status ?? DraftStatus.draft,
+            lastEditedAt: DateTime.now(),
+          ),
+        ),
+      );
     } catch (e, st) {
-      AppLogger.error('Failed to populate from FINAL', tag: 'CmtEditor', error: e, stack: st);
-      emit(CmtEditorActionFailed(
-        draft,
-        'Failed to populate from FINAL: ${e.toString()}',
-      ));
+      AppLogger.error(
+        'Failed to populate from FINAL',
+        tag: 'CmtEditor',
+        error: e,
+        stack: st,
+      );
+      emit(
+        CmtEditorActionFailed(
+          draft,
+          'Failed to populate from FINAL: ${e.toString()}',
+        ),
+      );
       emit(CmtEditorEditing(draft));
     }
   }
@@ -196,18 +229,29 @@ class CmtEditorBloc extends Bloc<CmtEditorEvent, CmtEditorState> {
       'conclusion' => draft.copyWith(conclusion: event.value),
       _ => draft,
     };
-    emit(CmtEditorEditing(
-        updated.copyWith(status: DraftStatus.draft, lastEditedAt: DateTime.now())));
+    emit(
+      CmtEditorEditing(
+        updated.copyWith(
+          status: DraftStatus.draft,
+          lastEditedAt: DateTime.now(),
+        ),
+      ),
+    );
   }
 
   void _onDecisionUpdated(DecisionUpdated event, Emitter<CmtEditorState> emit) {
     final draft = _current;
     if (draft == null) return;
     final decisions = draft.decisions
-        .map((d) => d.roll == event.roll ? d.copyWith(outcome: event.outcome) : d)
+        .map(
+          (d) => d.roll == event.roll ? d.copyWith(outcome: event.outcome) : d,
+        )
         .toList();
-    emit(CmtEditorEditing(
-        draft.copyWith(decisions: decisions, lastEditedAt: DateTime.now())));
+    emit(
+      CmtEditorEditing(
+        draft.copyWith(decisions: decisions, lastEditedAt: DateTime.now()),
+      ),
+    );
   }
 
   void _onNoteUpdated(NoteUpdated event, Emitter<CmtEditorState> emit) {
@@ -216,65 +260,112 @@ class CmtEditorBloc extends Bloc<CmtEditorEvent, CmtEditorState> {
     final decisions = draft.decisions
         .map((d) => d.roll == event.roll ? d.copyWith(note: event.note) : d)
         .toList();
-    emit(CmtEditorEditing(
-        draft.copyWith(decisions: decisions, lastEditedAt: DateTime.now())));
+    emit(
+      CmtEditorEditing(
+        draft.copyWith(decisions: decisions, lastEditedAt: DateTime.now()),
+      ),
+    );
   }
 
   void _onGradingUpdated(GradingUpdated event, Emitter<CmtEditorState> emit) {
     final draft = _current;
     if (draft == null) return;
-    emit(CmtEditorEditing(
-      draft.copyWith(
-        grades: event.grades,
-        status: DraftStatus.draft,
-        lastEditedAt: DateTime.now(),
+    emit(
+      CmtEditorEditing(
+        draft.copyWith(
+          grades: event.grades,
+          status: DraftStatus.draft,
+          lastEditedAt: DateTime.now(),
+        ),
       ),
-    ));
+    );
+  }
+
+  void _onContributionsManuallyUpdated(
+    ContributionsManuallyUpdated event,
+    Emitter<CmtEditorState> emit,
+  ) {
+    final draft = _current;
+    if (draft == null) return;
+    emit(
+      CmtEditorEditing(
+        draft.copyWith(
+          contributions: event.contributions,
+          status: DraftStatus.draft,
+          lastEditedAt: DateTime.now(),
+        ),
+      ),
+    );
   }
 
   Future<void> _onMarkComplete(
-      MarkCompleteRequested event, Emitter<CmtEditorState> emit) async {
+    MarkCompleteRequested event,
+    Emitter<CmtEditorState> emit,
+  ) async {
     final draft = _current;
     if (draft == null) return;
     final errors = _validate(draft);
     if (errors.isNotEmpty) {
       AppLogger.info(
-          'Validation failed (${errors.length} missing fields) — staying in draft mode',
-          tag: 'CmtEditor');
+        'Validation failed (${errors.length} missing fields) — staying in draft mode',
+        tag: 'CmtEditor',
+      );
       emit(CmtEditorEditing(draft, validationErrors: errors));
       return;
     }
     final completed = draft.copyWith(
-        status: DraftStatus.complete, lastEditedAt: DateTime.now());
+      status: DraftStatus.complete,
+      lastEditedAt: DateTime.now(),
+    );
     try {
       await _storage.saveDraft(completed);
       final syncResult = await _saveToFinalIfConfigured(completed);
-      AppLogger.info('Draft marked complete: ${draft.classCode}', tag: 'CmtEditor');
-      emit(CmtEditorSaved(
-        completed,
-        finalSynced: syncResult.synced,
-        warningMessage: syncResult.warningMessage,
-      ));
+      AppLogger.info(
+        'Draft marked complete: ${draft.classCode}',
+        tag: 'CmtEditor',
+      );
+      emit(
+        CmtEditorSaved(
+          completed,
+          finalSynced: syncResult.synced,
+          warningMessage: syncResult.warningMessage,
+        ),
+      );
     } catch (e, st) {
-      AppLogger.error('Failed to save completed draft', tag: 'CmtEditor', error: e, stack: st);
+      AppLogger.error(
+        'Failed to save completed draft',
+        tag: 'CmtEditor',
+        error: e,
+        stack: st,
+      );
     }
   }
 
   Future<void> _onSaveDraft(
-      SaveDraftRequested event, Emitter<CmtEditorState> emit) async {
+    SaveDraftRequested event,
+    Emitter<CmtEditorState> emit,
+  ) async {
     final draft = _current;
     if (draft == null) return;
     try {
       await _storage.saveDraft(draft);
       final syncResult = await _saveToFinalIfConfigured(draft);
       AppLogger.info('Draft saved: ${draft.classCode}', tag: 'CmtEditor');
-      emit(CmtEditorSaved(
-        draft,
-        finalSynced: syncResult.synced,
-        warningMessage: syncResult.warningMessage,
-      ));
+      emit(
+        CmtEditorSaved(
+          draft,
+          finalSynced: syncResult.synced,
+          warningMessage: syncResult.warningMessage,
+        ),
+      );
+      emit(CmtEditorEditing(draft));
     } catch (e, st) {
-      AppLogger.error('Failed to save draft', tag: 'CmtEditor', error: e, stack: st);
+      AppLogger.error(
+        'Failed to save draft',
+        tag: 'CmtEditor',
+        error: e,
+        stack: st,
+      );
     }
   }
 
@@ -340,8 +431,5 @@ class _FinalSyncResult {
   final bool synced;
   final String? warningMessage;
 
-  const _FinalSyncResult({
-    required this.synced,
-    this.warningMessage,
-  });
+  const _FinalSyncResult({required this.synced, this.warningMessage});
 }

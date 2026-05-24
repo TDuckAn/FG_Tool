@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("FuGradeHelper")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+35cc96bd6d2740e4fa34b41f3aa19b5657e675b8")]
 [assembly: System.Reflection.AssemblyProductAttribute("FuGradeHelper")]
 [assembly: System.Reflection.AssemblyTitleAttribute("FuGradeHelper")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

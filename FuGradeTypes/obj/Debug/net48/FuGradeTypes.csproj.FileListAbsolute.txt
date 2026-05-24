@@ -1,0 +1,10 @@
+h:\Class\PRM\FG_Tool\FG_Tool\FuGradeTypes\bin\Debug\net48\FuGrade.dll
+h:\Class\PRM\FG_Tool\FG_Tool\FuGradeTypes\bin\Debug\net48\FuGrade.pdb
+h:\Class\PRM\FG_Tool\FG_Tool\FuGradeTypes\obj\Debug\net48\FuGradeTypes.csproj.AssemblyReference.cache
+h:\Class\PRM\FG_Tool\FG_Tool\FuGradeTypes\obj\Debug\net48\FuGradeTypes.GeneratedMSBuildEditorConfig.editorconfig
+h:\Class\PRM\FG_Tool\FG_Tool\FuGradeTypes\obj\Debug\net48\FuGradeTypes.AssemblyInfoInputs.cache
+h:\Class\PRM\FG_Tool\FG_Tool\FuGradeTypes\obj\Debug\net48\FuGradeTypes.AssemblyInfo.cs
+h:\Class\PRM\FG_Tool\FG_Tool\FuGradeTypes\obj\Debug\net48\FuGradeTypes.csproj.CoreCompileInputs.cache
+h:\Class\PRM\FG_Tool\FG_Tool\FuGradeTypes\obj\Debug\net48\FuGradeTypes.sourcelink.json
+h:\Class\PRM\FG_Tool\FG_Tool\FuGradeTypes\obj\Debug\net48\FuGrade.dll
+h:\Class\PRM\FG_Tool\FG_Tool\FuGradeTypes\obj\Debug\net48\FuGrade.pdb

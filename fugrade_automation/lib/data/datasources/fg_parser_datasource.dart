@@ -18,7 +18,14 @@ class FgParserDatasource {
     // In release build: data\flutter_assets\assets\helper\FuGradeHelper.exe
     // In debug build:   flutter_assets\assets\helper\FuGradeHelper.exe
     for (final candidate in [
-      p.join(exeDir, 'data', 'flutter_assets', 'assets', 'helper', 'FuGradeHelper.exe'),
+      p.join(
+        exeDir,
+        'data',
+        'flutter_assets',
+        'assets',
+        'helper',
+        'FuGradeHelper.exe',
+      ),
       p.join(exeDir, 'flutter_assets', 'assets', 'helper', 'FuGradeHelper.exe'),
     ]) {
       if (await File(candidate).exists()) return candidate;
@@ -50,11 +57,57 @@ class FgParserDatasource {
     );
 
     if (result.exitCode != 0) {
-      throw FgParseException(
-          (result.stderr as String).trim(), result.exitCode);
+      throw FgParseException((result.stderr as String).trim(), result.exitCode);
     }
 
     final json = jsonDecode(result.stdout as String) as Map<String, dynamic>;
     return TeacherGradeDto.fromJson(json);
+  }
+
+  Future<void> writeFgGrades({
+    required String inputPath,
+    required String classCode,
+    required Map<String, Map<String, double>> grades,
+  }) async {
+    final helper = await _helperPath();
+    final gradesFile = File(
+      p.join(
+        Directory.systemTemp.path,
+        'fg_grades_${DateTime.now().microsecondsSinceEpoch}.json',
+      ),
+    );
+
+    try {
+      final payload = <String, Map<String, Map<String, double>>>{
+        classCode: grades,
+      };
+      await gradesFile.writeAsString(jsonEncode(payload), encoding: utf8);
+
+      final result = await Process.run(
+        helper,
+        [
+          'write-fg',
+          '--input',
+          inputPath,
+          '--grades-file',
+          gradesFile.path,
+          '--output',
+          inputPath,
+        ],
+        stdoutEncoding: utf8,
+        stderrEncoding: utf8,
+      );
+
+      if (result.exitCode != 0) {
+        throw FgParseException(
+          (result.stderr as String).trim(),
+          result.exitCode,
+        );
+      }
+    } finally {
+      if (await gradesFile.exists()) {
+        await gradesFile.delete();
+      }
+    }
   }
 }

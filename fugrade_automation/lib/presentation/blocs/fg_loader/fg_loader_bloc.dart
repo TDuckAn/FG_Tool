@@ -27,7 +27,8 @@ class FgLoaderLoading extends FgLoaderState {}
 
 class FgLoaderLoaded extends FgLoaderState {
   final TeacherGradeDto grade;
-  FgLoaderLoaded(this.grade);
+  final String filePath;
+  FgLoaderLoaded(this.grade, this.filePath);
 }
 
 class FgLoaderError extends FgLoaderState {
@@ -47,7 +48,9 @@ class FgLoaderBloc extends Bloc<FgLoaderEvent, FgLoaderState> {
   }
 
   Future<void> _onFileSelected(
-      FgLoaderEvent event, Emitter<FgLoaderState> emit) async {
+    FgLoaderEvent event,
+    Emitter<FgLoaderState> emit,
+  ) async {
     final path = event is FgFileSelected
         ? event.filePath
         : (event as FgReloadRequested).filePath;
@@ -55,14 +58,22 @@ class FgLoaderBloc extends Bloc<FgLoaderEvent, FgLoaderState> {
     emit(FgLoaderLoading());
     try {
       final grade = await _parser.parseFgFile(path);
-      emit(FgLoaderLoaded(grade));
+      emit(FgLoaderLoaded(grade, path));
     } on FgParseException catch (e, st) {
-      AppLogger.error('FgParser failed (exit ${e.exitCode}): ${e.message}',
-          tag: 'FgLoader', error: e, stack: st);
+      AppLogger.error(
+        'FgParser failed (exit ${e.exitCode}): ${e.message}',
+        tag: 'FgLoader',
+        error: e,
+        stack: st,
+      );
       emit(FgLoaderError(e.message, exitCode: e.exitCode));
     } catch (e, st) {
-      AppLogger.error('Unexpected error parsing .fg file',
-          tag: 'FgLoader', error: e, stack: st);
+      AppLogger.error(
+        'Unexpected error parsing .fg file',
+        tag: 'FgLoader',
+        error: e,
+        stack: st,
+      );
       emit(FgLoaderError(e.toString()));
     }
   }

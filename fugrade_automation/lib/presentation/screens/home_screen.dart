@@ -22,7 +22,11 @@ class HomeScreen extends StatelessWidget {
             if (state is FgLoaderLoaded) {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                    builder: (_) => GroupListScreen(grade: state.grade)),
+                  builder: (_) => GroupListScreen(
+                    grade: state.grade,
+                    fgFilePath: state.filePath,
+                  ),
+                ),
               );
             }
             if (state is FgLoaderError) {
@@ -38,58 +42,58 @@ class HomeScreen extends StatelessWidget {
             children: [
               _CornerStamp(),
               Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 720),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 48),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        const SizedBox(height: 64),
-                        const Kicker(
-                          text: 'FU Capstone · Grading Pipeline',
-                          number: 'v1.0',
-                        ),
-                        const SizedBox(height: 28),
-                        Text(
-                          'FuGrade',
-                          style: AppTheme.display(96,
-                                  weight: FontWeight.w600, height: 0.95)
-                              .copyWith(
-                            fontFeatures: const [
-                              FontFeature.enable('ss01'),
-                            ],
+                child: SingleChildScrollView(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 720),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 48),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          const SizedBox(height: 64),
+                          const Kicker(
+                            text: 'FU Capstone · Grading Pipeline',
+                            number: 'v1.0',
                           ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Automation',
-                          style: AppTheme.display(56,
-                              weight: FontWeight.w300,
-                              height: 1.0,
-                              color: AppTheme.accent),
-                        ),
-                        const SizedBox(height: 32),
-                        ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 480),
-                          child: Text(
-                            'Tự động hoá quy trình tạo file nhận xét '
-                            'capstone cho FU Grading Editor 1.1.',
+                          const SizedBox(height: 28),
+                          Text(
+                            'FuGrade Automation',
+                            style:
+                                AppTheme.display(
+                                  72,
+                                  weight: FontWeight.w600,
+                                  height: 0.95,
+                                ).copyWith(
+                                  fontFeatures: const [
+                                    FontFeature.enable('ss01'),
+                                  ],
+                                ),
                             textAlign: TextAlign.center,
-                            style: AppTheme.body(15,
-                                color: AppTheme.inkSoft, height: 1.6),
                           ),
-                        ),
-                        const SizedBox(height: 56),
-                        _DropZone(),
-                        const SizedBox(height: 28),
-                        const _OrDivider(),
-                        const SizedBox(height: 28),
-                        _OpenCmtButton(),
-                        const SizedBox(height: 80),
-                      ],
+                          const SizedBox(height: 32),
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 480),
+                            child: Text(
+                              'Tự động hoá quy trình tạo file nhận xét '
+                              'capstone cho FU Grading Editor 1.1.',
+                              textAlign: TextAlign.center,
+                              style: AppTheme.body(
+                                15,
+                                color: AppTheme.inkSoft,
+                                height: 1.6,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 56),
+                          _DropZone(),
+                          const SizedBox(height: 28),
+                          const _OrDivider(),
+                          const SizedBox(height: 28),
+                          _OpenCmtButton(),
+                          const SizedBox(height: 80),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -111,9 +115,14 @@ class _CornerStamp extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('§',
-              style: AppTheme.display(40,
-                  weight: FontWeight.w500, color: AppTheme.accent)),
+          Text(
+            '§',
+            style: AppTheme.display(
+              40,
+              weight: FontWeight.w500,
+              color: AppTheme.accent,
+            ),
+          ),
           const SizedBox(height: 2),
           Container(width: 32, height: 1, color: AppTheme.ink),
         ],
@@ -135,9 +144,10 @@ class _DropZoneState extends State<_DropZone>
   @override
   void initState() {
     super.initState();
-    _pulseCtrl =
-        AnimationController(vsync: this, duration: const Duration(seconds: 2))
-          ..repeat(reverse: true);
+    _pulseCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
   }
 
   @override
@@ -153,9 +163,9 @@ class _DropZoneState extends State<_DropZone>
       dialogTitle: 'Select .fg file',
     );
     if (result != null && result.files.single.path != null && mounted) {
-      context
-          .read<FgLoaderBloc>()
-          .add(FgFileSelected(result.files.single.path!));
+      context.read<FgLoaderBloc>().add(
+        FgFileSelected(result.files.single.path!),
+      );
     }
   }
 
@@ -166,9 +176,7 @@ class _DropZoneState extends State<_DropZone>
         final loading = state is FgLoaderLoading;
 
         return MouseRegion(
-          cursor: loading
-              ? SystemMouseCursors.wait
-              : SystemMouseCursors.click,
+          cursor: loading ? SystemMouseCursors.wait : SystemMouseCursors.click,
           onEnter: (_) => setState(() => _hovering = true),
           onExit: (_) => setState(() => _hovering = false),
           child: GestureDetector(
@@ -192,9 +200,7 @@ class _DropZoneState extends State<_DropZone>
                   ),
                 ],
               ),
-              child: loading
-                  ? _loadingContent()
-                  : _idleContent(_hovering),
+              child: loading ? _loadingContent() : _idleContent(_hovering),
             ),
           ),
         );
@@ -216,8 +222,10 @@ class _DropZoneState extends State<_DropZone>
             ),
           ),
           const SizedBox(height: 18),
-          Text('PARSING BINARY',
-              style: AppTheme.label(11, color: AppTheme.inkSoft)),
+          Text(
+            'PARSING BINARY',
+            style: AppTheme.label(11, color: AppTheme.inkSoft),
+          ),
         ],
       ),
     );
@@ -231,14 +239,18 @@ class _DropZoneState extends State<_DropZone>
         Positioned(
           top: 12,
           left: 16,
-          child: Text('01',
-              style: AppTheme.mono(10, color: muted, weight: FontWeight.w600)),
+          child: Text(
+            '01',
+            style: AppTheme.mono(10, color: muted, weight: FontWeight.w600),
+          ),
         ),
         Positioned(
           top: 12,
           right: 16,
-          child: Text('.FG',
-              style: AppTheme.mono(10, color: muted, weight: FontWeight.w600)),
+          child: Text(
+            '.FG',
+            style: AppTheme.mono(10, color: muted, weight: FontWeight.w600),
+          ),
         ),
         Center(
           child: Column(
@@ -268,10 +280,14 @@ class _DropZoneState extends State<_DropZone>
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('FuGradeLib.TeacherGrade',
-                  style: AppTheme.mono(10, color: muted)),
-              Text('.NET BinaryFormatter',
-                  style: AppTheme.mono(10, color: muted)),
+              Text(
+                'FuGradeLib.TeacherGrade',
+                style: AppTheme.mono(10, color: muted),
+              ),
+              Text(
+                '.NET BinaryFormatter',
+                style: AppTheme.mono(10, color: muted),
+              ),
             ],
           ),
         ),
@@ -292,8 +308,10 @@ class _OrDivider extends StatelessWidget {
           const Expanded(child: Divider(color: AppTheme.rule)),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text('OR',
-                style: AppTheme.label(10, color: AppTheme.inkMuted)),
+            child: Text(
+              'OR',
+              style: AppTheme.label(10, color: AppTheme.inkMuted),
+            ),
           ),
           const Expanded(child: Divider(color: AppTheme.rule)),
         ],
@@ -341,10 +359,12 @@ class _OpenCmtButtonState extends State<_OpenCmtButton> {
       }).toList();
 
       final studentDtos = rawStudents
-          .map((s) => StudentDto(
-                roll: s['roll'] as String? ?? '',
-                name: s['name'] as String? ?? '',
-              ))
+          .map(
+            (s) => StudentDto(
+              roll: s['roll'] as String? ?? '',
+              name: s['name'] as String? ?? '',
+            ),
+          )
           .toList();
 
       final draft = CmtDraftDto(
@@ -399,16 +419,24 @@ class _OpenCmtButtonState extends State<_OpenCmtButton> {
           children: [
             Row(
               children: [
-                Text('02',
-                    style: AppTheme.mono(11,
-                        color: AppTheme.inkMuted, weight: FontWeight.w600)),
+                Text(
+                  '02',
+                  style: AppTheme.mono(
+                    11,
+                    color: AppTheme.inkMuted,
+                    weight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(width: 16),
                 Container(width: 20, height: 1, color: AppTheme.rule),
                 const SizedBox(width: 16),
                 Text(
                   _loading ? 'Opening…' : 'Edit existing .cmt file',
-                  style: AppTheme.body(14,
-                      weight: FontWeight.w500, color: AppTheme.ink),
+                  style: AppTheme.body(
+                    14,
+                    weight: FontWeight.w500,
+                    color: AppTheme.ink,
+                  ),
                 ),
               ],
             ),
@@ -417,7 +445,9 @@ class _OpenCmtButtonState extends State<_OpenCmtButton> {
                     width: 14,
                     height: 14,
                     child: CircularProgressIndicator(
-                        strokeWidth: 1.4, color: AppTheme.ink),
+                      strokeWidth: 1.4,
+                      color: AppTheme.ink,
+                    ),
                   )
                 : const Icon(Icons.arrow_forward, size: 16),
           ],

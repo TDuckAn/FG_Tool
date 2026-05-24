@@ -21,6 +21,15 @@ namespace FuGradeHelper.Surrogates
             { "FuGradeLib.GradeDetail",        typeof(GradeComponentPlaceholder) },
         };
 
+        private static readonly Dictionary<Type, Tuple<string, string>> ReverseMap =
+            new Dictionary<Type, Tuple<string, string>>
+            {
+                { typeof(TeacherGradeSurrogate), Tuple.Create("FuGradeLib", "FuGradeLib.TeacherGrade") },
+                { typeof(SubjectClassGradeSurrogate), Tuple.Create("FuGradeLib", "FuGradeLib.SubjectClassGrade") },
+                { typeof(StudentSurrogate), Tuple.Create("FuGradeLib", "FuGradeLib.Student") },
+                { typeof(GradeComponentPlaceholder), Tuple.Create("FuGradeLib", "FuGradeLib.GradeComponent") },
+            };
+
         public override Type BindToType(string assemblyName, string typeName)
         {
             // Direct type mapping
@@ -43,6 +52,19 @@ namespace FuGradeHelper.Surrogates
 
             // Fall through to default resolution for all other types (mscorlib, etc.)
             return null;
+        }
+
+        public override void BindToName(Type serializedType, out string assemblyName, out string typeName)
+        {
+            if (ReverseMap.TryGetValue(serializedType, out var entry))
+            {
+                assemblyName = entry.Item1;
+                typeName = entry.Item2;
+                return;
+            }
+
+            assemblyName = null;
+            typeName = null;
         }
     }
 }

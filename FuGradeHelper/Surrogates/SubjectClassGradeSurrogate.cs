@@ -6,6 +6,8 @@ namespace FuGradeHelper.Surrogates
     [System.Serializable]
     internal class SubjectClassGradeSurrogate : ISerializable
     {
+        private readonly Dictionary<string, object> _raw = new Dictionary<string, object>();
+
         public string Subject { get; private set; }
         public string ClassCode { get; private set; }
         public List<StudentSurrogate> Students { get; private set; }
@@ -19,7 +21,6 @@ namespace FuGradeHelper.Surrogates
                 "<Subject>k__BackingField", "Subject", "subject",
                 "<SubjectCode>k__BackingField", "SubjectCode");
 
-            // The .fg field might be named "Class", "ClassName", or "ClassCode"
             ClassCode = SerializationHelper.GetField<string>(info,
                 "<Class>k__BackingField", "Class", "class",
                 "<ClassName>k__BackingField", "ClassName",
@@ -35,14 +36,31 @@ namespace FuGradeHelper.Surrogates
                 "<GradeItems>k__BackingField", "GradeItems", "gradeItems",
                 "<GradeDetails>k__BackingField", "GradeDetails", "gradeDetails");
             GradeComponents = SerializationHelper.AsList<GradeComponentPlaceholder>(componentsObj);
+
+            SerializationHelper.CaptureRawFields(info, _raw);
         }
 
         public void GetObjectData(SerializationInfo info, StreamingContext context)
         {
-            info.AddValue("Subject", Subject);
-            info.AddValue("ClassCode", ClassCode);
-            info.AddValue("Students", Students);
-            info.AddValue("GradeComponents", GradeComponents);
+            var knownKeys = new HashSet<string>
+            {
+                "<Subject>k__BackingField", "Subject", "subject",
+                "<SubjectCode>k__BackingField", "SubjectCode",
+                "<Class>k__BackingField", "Class", "class",
+                "<ClassName>k__BackingField", "ClassName",
+                "<ClassCode>k__BackingField", "ClassCode",
+                "<Students>k__BackingField", "Students", "students",
+                "<GradeComponents>k__BackingField", "GradeComponents", "gradeComponents",
+                "<Components>k__BackingField", "Components", "components",
+                "<GradeItems>k__BackingField", "GradeItems", "gradeItems",
+                "<GradeDetails>k__BackingField", "GradeDetails", "gradeDetails"
+            };
+
+            SerializationHelper.AddRawValues(info, _raw, knownKeys);
+            info.AddValue("<Subject>k__BackingField", Subject);
+            info.AddValue("<Class>k__BackingField", ClassCode);
+            info.AddValue("<Students>k__BackingField", Students);
+            info.AddValue("<GradeComponents>k__BackingField", GradeComponents);
         }
     }
 }

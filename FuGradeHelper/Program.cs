@@ -42,6 +42,12 @@ switch (args[0].ToLowerInvariant())
         }
         return InspectCmtCommand.Run(args[1]);
 
+    case "write-fg":
+        return WriteFgCommand.Run(
+            inputPath: GetArg(args, "--input"),
+            gradesFilePath: GetArg(args, "--grades-file"),
+            outputPath: GetArg(args, "--output"));
+
     default:
         Console.Error.WriteLine($"Unknown command: {args[0]}");
         PrintUsage();
@@ -62,5 +68,6 @@ static void PrintUsage()
     Console.Error.WriteLine();
     Console.Error.WriteLine("Commands:");
     Console.Error.WriteLine("  parse-fg <path.fg>                      Parse .fg file, output JSON to stdout");
+    Console.Error.WriteLine("  write-fg --input <path.fg> --grades-file <scores.json> --output <path.fg>");
     Console.Error.WriteLine("  write-cmt --data <json> --output <path> Write .cmt binary from JSON input");
 }

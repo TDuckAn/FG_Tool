@@ -35,4 +35,15 @@ namespace FuGrade
         public string Disagree_to_defense { get; set; }
         public string Note { get; set; }
     }
+
+    [Serializable]
+    public class FinalThesisGradingItem
+    {
+        public string SubjectCode { get; set; }
+        public string Major { get; set; }
+        public string Minor { get; set; }
+        public string ItemGroup { get; set; }
+        public string GradingItem { get; set; }
+        public double Scale { get; set; }
+    }
 }

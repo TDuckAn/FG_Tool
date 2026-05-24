@@ -6,6 +6,8 @@ namespace FuGradeHelper.Surrogates
     [System.Serializable]
     internal class TeacherGradeSurrogate : ISerializable
     {
+        private readonly Dictionary<string, object> _raw = new Dictionary<string, object>();
+
         public string Version { get; private set; }
         public string Semester { get; private set; }
         public string Login { get; private set; }
@@ -31,14 +33,29 @@ namespace FuGradeHelper.Surrogates
                 "<SubjectClassGrades>k__BackingField", "SubjectClassGrades", "subjectClassGrades",
                 "<Groups>k__BackingField", "Groups");
             SubjectClassGrades = SerializationHelper.AsList<SubjectClassGradeSurrogate>(groupsObj);
+
+            SerializationHelper.CaptureRawFields(info, _raw);
         }
 
         public void GetObjectData(SerializationInfo info, StreamingContext context)
         {
-            info.AddValue("Version", Version);
-            info.AddValue("Semester", Semester);
-            info.AddValue("Login", Login);
-            info.AddValue("SubjectClassGrades", SubjectClassGrades);
+            var knownKeys = new HashSet<string>
+            {
+                "<Version>k__BackingField", "Version", "version",
+                "<AppVersion>k__BackingField", "AppVersion",
+                "<Semester>k__BackingField", "Semester", "semester",
+                "<Login>k__BackingField", "Login", "login",
+                "<TeacherLogin>k__BackingField", "TeacherLogin",
+                "<Username>k__BackingField", "Username",
+                "<SubjectClassGrades>k__BackingField", "SubjectClassGrades", "subjectClassGrades",
+                "<Groups>k__BackingField", "Groups"
+            };
+
+            SerializationHelper.AddRawValues(info, _raw, knownKeys);
+            info.AddValue("<Version>k__BackingField", Version);
+            info.AddValue("<Semester>k__BackingField", Semester);
+            info.AddValue("<Login>k__BackingField", Login);
+            info.AddValue("<SubjectClassGrades>k__BackingField", SubjectClassGrades);
         }
     }
 }

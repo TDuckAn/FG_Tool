@@ -43,4 +43,4 @@ flutter:
 
   assets:
     - assets/helper/
-
+    - assets/helper/MasterFile/

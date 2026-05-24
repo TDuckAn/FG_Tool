@@ -14,8 +14,13 @@ import 'cmt_editor_screen.dart';
 
 class GroupListScreen extends StatefulWidget {
   final TeacherGradeDto grade;
+  final String fgFilePath;
 
-  const GroupListScreen({super.key, required this.grade});
+  const GroupListScreen({
+    super.key,
+    required this.grade,
+    required this.fgFilePath,
+  });
 
   @override
   State<GroupListScreen> createState() => _GroupListScreenState();
@@ -33,12 +38,12 @@ class _GroupListScreenState extends State<GroupListScreen> {
   Future<void> _reloadDrafts() async {
     final storage = context.read<LocalStorageDatasource>();
     final drafts = await storage.loadAllDrafts(
-        widget.grade.semester, widget.grade.login);
+      widget.grade.semester,
+      widget.grade.login,
+    );
     if (!mounted) return;
     setState(() {
-      _draftStatusByClass = {
-        for (final d in drafts) d.classCode: d.status,
-      };
+      _draftStatusByClass = {for (final d in drafts) d.classCode: d.status};
     });
   }
 
@@ -94,8 +99,8 @@ class _GroupListScreenState extends State<GroupListScreen> {
                       final matchResults = syncState is SheetSyncLoaded
                           ? syncState.matchResults
                           : widget.grade.capstoneGroups
-                              .map((g) => GroupMatchResult.none(g))
-                              .toList();
+                                .map((g) => GroupMatchResult.none(g))
+                                .toList();
 
                       return Column(
                         children: [
@@ -114,6 +119,7 @@ class _GroupListScreenState extends State<GroupListScreen> {
                           Expanded(
                             child: _Ledger(
                               grade: widget.grade,
+                              fgFilePath: widget.fgFilePath,
                               matchResults: matchResults,
                               draftStatusByClass: _draftStatusByClass,
                             ),
@@ -133,10 +139,13 @@ class _GroupListScreenState extends State<GroupListScreen> {
 
   Future<void> _exportAll(BuildContext context) async {
     final storage = context.read<LocalStorageDatasource>();
-    final drafts =
-        await storage.loadAllDrafts(widget.grade.semester, widget.grade.login);
-    final completeDrafts =
-        drafts.where((d) => d.status == DraftStatus.complete).toList();
+    final drafts = await storage.loadAllDrafts(
+      widget.grade.semester,
+      widget.grade.login,
+    );
+    final completeDrafts = drafts
+        .where((d) => d.status == DraftStatus.complete)
+        .toList();
 
     if (!context.mounted) return;
     final missing = _firstMissingExportFields(completeDrafts);
@@ -204,20 +213,25 @@ class _Masthead extends StatelessWidget {
                 children: [
                   Text(
                     grade.login,
-                    style:
-                        AppTheme.display(36, weight: FontWeight.w600),
+                    style: AppTheme.display(36, weight: FontWeight.w600),
                   ),
                   const SizedBox(width: 14),
-                  Text(' / ',
-                      style: AppTheme.display(28,
-                          weight: FontWeight.w300,
-                          color: AppTheme.inkMuted)),
+                  Text(
+                    ' / ',
+                    style: AppTheme.display(
+                      28,
+                      weight: FontWeight.w300,
+                      color: AppTheme.inkMuted,
+                    ),
+                  ),
                   const SizedBox(width: 14),
                   Text(
                     grade.semester,
-                    style: AppTheme.display(28,
-                        weight: FontWeight.w400,
-                        color: AppTheme.accent),
+                    style: AppTheme.display(
+                      28,
+                      weight: FontWeight.w400,
+                      color: AppTheme.accent,
+                    ),
                   ),
                 ],
               ),
@@ -227,9 +241,10 @@ class _Masthead extends StatelessWidget {
           _MetaCol(label: 'GROUPS', value: '${grade.capstoneGroups.length}'),
           const SizedBox(width: 40),
           _MetaCol(
-              label: 'STUDENTS',
-              value:
-                  '${grade.capstoneGroups.fold<int>(0, (a, g) => a + g.students.length)}'),
+            label: 'STUDENTS',
+            value:
+                '${grade.capstoneGroups.fold<int>(0, (a, g) => a + g.students.length)}',
+          ),
           const SizedBox(width: 40),
           _MetaCol(label: 'VERSION', value: grade.version),
         ],
@@ -250,8 +265,7 @@ class _MetaCol extends StatelessWidget {
       children: [
         Text(label, style: AppTheme.label(9, color: AppTheme.inkMuted)),
         const SizedBox(height: 4),
-        Text(value,
-            style: AppTheme.display(22, weight: FontWeight.w500)),
+        Text(value, style: AppTheme.display(22, weight: FontWeight.w500)),
       ],
     );
   }
@@ -283,11 +297,13 @@ class _ToolBar extends StatelessWidget {
           BlocBuilder<SheetSyncBloc, SheetSyncState>(
             builder: (ctx, state) => OutlinedButton.icon(
               onPressed: state is SheetSyncLoaded
-                  ? () => ctx.read<SheetSyncBloc>().add(SheetSyncRequested(
+                  ? () => ctx.read<SheetSyncBloc>().add(
+                      SheetSyncRequested(
                         fgGroups: grade.capstoneGroups,
                         fgSemester: grade.semester,
                         fgLogin: grade.login,
-                      ))
+                      ),
+                    )
                   : null,
               icon: const Icon(Icons.refresh, size: 16),
               label: const Text('SYNC'),
@@ -313,8 +329,7 @@ class _ToolBar extends StatelessWidget {
           ),
           BlocBuilder<ExportBloc, ExportState>(
             builder: (ctx, state) => FilledButton.icon(
-              onPressed:
-                  state is ExportInProgress ? null : () => onExport(ctx),
+              onPressed: state is ExportInProgress ? null : () => onExport(ctx),
               icon: state is ExportInProgress
                   ? SizedBox(
                       width: 12,
@@ -328,9 +343,11 @@ class _ToolBar extends StatelessWidget {
                       ),
                     )
                   : const Icon(Icons.arrow_outward, size: 16),
-              label: Text(state is ExportInProgress
-                  ? 'EXPORTING  ${state.done} / ${state.total}'
-                  : 'EXPORT ALL'),
+              label: Text(
+                state is ExportInProgress
+                    ? 'EXPORTING  ${state.done} / ${state.total}'
+                    : 'EXPORT ALL',
+              ),
             ),
           ),
         ],
@@ -360,8 +377,10 @@ class _ToolBar extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Paste the response sheet URL and optional FINAL sheet URL.',
-                  style: AppTheme.body(14, color: AppTheme.inkSoft)),
+              Text(
+                'Paste the response sheet URL and optional FINAL sheet URL.',
+                style: AppTheme.body(14, color: AppTheme.inkSoft),
+              ),
               const SizedBox(height: 18),
               TextField(
                 controller: responseCtrl,
@@ -386,8 +405,9 @@ class _ToolBar extends StatelessWidget {
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('CANCEL')),
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('CANCEL'),
+          ),
           FilledButton(
             onPressed: () async {
               final responseUrl = responseCtrl.text.trim();
@@ -395,17 +415,19 @@ class _ToolBar extends StatelessWidget {
               Navigator.pop(ctx);
 
               await context.read<LocalStorageDatasource>().saveSheetUrls(
-                    responseSheetUrl: responseUrl,
-                    finalSheetUrl: finalUrl,
-                  );
+                responseSheetUrl: responseUrl,
+                finalSheetUrl: finalUrl,
+              );
 
               if (!context.mounted) return;
-              context.read<SheetSyncBloc>().add(SheetUrlSubmitted(
-                    url: responseUrl,
-                    fgGroups: grade.capstoneGroups,
-                    fgSemester: grade.semester,
-                    fgLogin: grade.login,
-                  ));
+              context.read<SheetSyncBloc>().add(
+                SheetUrlSubmitted(
+                  url: responseUrl,
+                  fgGroups: grade.capstoneGroups,
+                  fgSemester: grade.semester,
+                  fgLogin: grade.login,
+                ),
+              );
             },
             child: const Text('CONNECT'),
           ),
@@ -444,8 +466,7 @@ class _Banner extends StatelessWidget {
           Container(width: 4, height: 16, color: color),
           const SizedBox(width: 14),
           Expanded(
-            child: Text(text,
-                style: AppTheme.body(13, color: AppTheme.ink)),
+            child: Text(text, style: AppTheme.body(13, color: AppTheme.ink)),
           ),
         ],
       ),
@@ -466,11 +487,15 @@ class _LoadingBlock extends StatelessWidget {
             width: 32,
             height: 32,
             child: CircularProgressIndicator(
-                strokeWidth: 1.4, color: AppTheme.ink),
+              strokeWidth: 1.4,
+              color: AppTheme.ink,
+            ),
           ),
           const SizedBox(height: 18),
-          Text('Fetching Google Sheet',
-              style: AppTheme.label(11, color: AppTheme.inkSoft)),
+          Text(
+            'Fetching Google Sheet',
+            style: AppTheme.label(11, color: AppTheme.inkSoft),
+          ),
         ],
       ),
     );
@@ -481,10 +506,12 @@ class _LoadingBlock extends StatelessWidget {
 
 class _Ledger extends StatelessWidget {
   final TeacherGradeDto grade;
+  final String fgFilePath;
   final List<GroupMatchResult> matchResults;
   final Map<String, DraftStatus> draftStatusByClass;
   const _Ledger({
     required this.grade,
+    required this.fgFilePath,
     required this.matchResults,
     required this.draftStatusByClass,
   });
@@ -510,9 +537,10 @@ class _Ledger extends StatelessWidget {
                 itemBuilder: (context, i) => _LedgerRow(
                   index: i + 1,
                   grade: grade,
+                  fgFilePath: fgFilePath,
                   result: matchResults[i],
-                  draftStatus: draftStatusByClass[
-                          matchResults[i].group.classCode] ??
+                  draftStatus:
+                      draftStatusByClass[matchResults[i].group.classCode] ??
                       DraftStatus.notStarted,
                 ),
               ),
@@ -533,28 +561,43 @@ class _LedgerHeader extends StatelessWidget {
       child: Row(
         children: [
           SizedBox(
-              width: 40,
-              child:
-                  Text('#', style: AppTheme.label(10, color: AppTheme.paper))),
+            width: 40,
+            child: Text('#', style: AppTheme.label(10, color: AppTheme.paper)),
+          ),
           SizedBox(
-              width: 100,
-              child: Text('SUBJECT',
-                  style: AppTheme.label(10, color: AppTheme.paper))),
+            width: 100,
+            child: Text(
+              'SUBJECT',
+              style: AppTheme.label(10, color: AppTheme.paper),
+            ),
+          ),
           Expanded(
-              child: Text('GROUP / CLASS CODE',
-                  style: AppTheme.label(10, color: AppTheme.paper))),
+            child: Text(
+              'GROUP / CLASS CODE',
+              style: AppTheme.label(10, color: AppTheme.paper),
+            ),
+          ),
           SizedBox(
-              width: 90,
-              child: Text('STUDENTS',
-                  style: AppTheme.label(10, color: AppTheme.paper))),
+            width: 90,
+            child: Text(
+              'STUDENTS',
+              style: AppTheme.label(10, color: AppTheme.paper),
+            ),
+          ),
           SizedBox(
-              width: 140,
-              child: Text('COMPLETION',
-                  style: AppTheme.label(10, color: AppTheme.paper))),
+            width: 140,
+            child: Text(
+              'COMPLETION',
+              style: AppTheme.label(10, color: AppTheme.paper),
+            ),
+          ),
           SizedBox(
-              width: 140,
-              child: Text('SHEET MATCH',
-                  style: AppTheme.label(10, color: AppTheme.paper))),
+            width: 140,
+            child: Text(
+              'SHEET MATCH',
+              style: AppTheme.label(10, color: AppTheme.paper),
+            ),
+          ),
           const SizedBox(width: 120),
         ],
       ),
@@ -565,11 +608,13 @@ class _LedgerHeader extends StatelessWidget {
 class _LedgerRow extends StatefulWidget {
   final int index;
   final TeacherGradeDto grade;
+  final String fgFilePath;
   final GroupMatchResult result;
   final DraftStatus draftStatus;
   const _LedgerRow({
     required this.index,
     required this.grade,
+    required this.fgFilePath,
     required this.result,
     required this.draftStatus,
   });
@@ -595,7 +640,9 @@ class _LedgerRowState extends State<_LedgerRow> {
       onExit: (_) => setState(() => _hover = false),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 120),
-        color: _hover ? AppTheme.accentSoft.withValues(alpha: 0.4) : AppTheme.card,
+        color: _hover
+            ? AppTheme.accentSoft.withValues(alpha: 0.4)
+            : AppTheme.card,
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         child: Row(
           children: [
@@ -603,15 +650,19 @@ class _LedgerRowState extends State<_LedgerRow> {
               width: 40,
               child: Text(
                 widget.index.toString().padLeft(2, '0'),
-                style: AppTheme.mono(13,
-                    color: AppTheme.inkMuted, weight: FontWeight.w600),
+                style: AppTheme.mono(
+                  13,
+                  color: AppTheme.inkMuted,
+                  weight: FontWeight.w600,
+                ),
               ),
             ),
             SizedBox(
               width: 100,
-              child: Text(group.subject,
-                  style:
-                      AppTheme.mono(13, weight: FontWeight.w600)),
+              child: Text(
+                group.subject,
+                style: AppTheme.mono(13, weight: FontWeight.w600),
+              ),
             ),
             Expanded(
               child: Text(
@@ -624,13 +675,15 @@ class _LedgerRowState extends State<_LedgerRow> {
               width: 90,
               child: Row(
                 children: [
-                  Text('${group.students.length}',
-                      style: AppTheme.display(20,
-                          weight: FontWeight.w500)),
+                  Text(
+                    '${group.students.length}',
+                    style: AppTheme.display(20, weight: FontWeight.w500),
+                  ),
                   const SizedBox(width: 6),
-                  Text('STD',
-                      style:
-                          AppTheme.label(9, color: AppTheme.inkMuted)),
+                  Text(
+                    'STD',
+                    style: AppTheme.label(9, color: AppTheme.inkMuted),
+                  ),
                 ],
               ),
             ),
@@ -679,7 +732,9 @@ class _LedgerRowState extends State<_LedgerRow> {
                     backgroundColor: AppTheme.ink,
                     foregroundColor: AppTheme.paper,
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 10),
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
                     minimumSize: const Size(0, 34),
                   ),
                   child: Row(
@@ -702,9 +757,10 @@ class _LedgerRowState extends State<_LedgerRow> {
   Future<void> _exportSingle(BuildContext context) async {
     final storage = context.read<LocalStorageDatasource>();
     final draft = await storage.loadDraft(
-        widget.grade.semester,
-        widget.grade.login,
-        widget.result.group.classCode);
+      widget.grade.semester,
+      widget.grade.login,
+      widget.result.group.classCode,
+    );
 
     if (!context.mounted) return;
 
@@ -741,15 +797,24 @@ class _LedgerRowState extends State<_LedgerRow> {
   Future<void> _openEditor(BuildContext context) async {
     final storage = context.read<LocalStorageDatasource>();
     CmtDraftDto? draft = await storage.loadDraft(
-        widget.grade.semester,
-        widget.grade.login,
-        widget.result.group.classCode);
+      widget.grade.semester,
+      widget.grade.login,
+      widget.result.group.classCode,
+    );
     draft ??= _buildNewDraft();
+    final group = widget.result.group;
+    if (draft.gradingComponents.isEmpty && group.gradingComponents.isNotEmpty) {
+      draft = draft.copyWith(gradingComponents: group.gradingComponents);
+      await storage.saveDraft(draft);
+    }
 
     if (!context.mounted) return;
     context.read<CmtEditorBloc>().add(DraftLoaded(draft));
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => CmtEditorScreen(draft: draft!)),
+      MaterialPageRoute(
+        builder: (_) =>
+            CmtEditorScreen(draft: draft!, fgFilePath: widget.fgFilePath),
+      ),
     );
   }
 
@@ -762,13 +827,16 @@ class _LedgerRowState extends State<_LedgerRow> {
       classCode: group.classCode,
       students: group.students,
       fgVersion: widget.grade.version,
+      gradingComponents: group.gradingComponents,
       decisions: group.students
-          .map((s) => StudentDecisionDto(
-                roll: s.roll,
-                name: s.name,
-                outcome: DefenseOutcome.agree,
-                note: '',
-              ))
+          .map(
+            (s) => StudentDecisionDto(
+              roll: s.roll,
+              name: s.name,
+              outcome: DefenseOutcome.agree,
+              note: '',
+            ),
+          )
           .toList(),
       matchStatus: widget.result.matchStatus,
     );
@@ -780,8 +848,10 @@ class _LedgerRowState extends State<_LedgerRow> {
 class _ExportMissingFieldsDialog extends StatelessWidget {
   final String classCode;
   final List<String> missing;
-  const _ExportMissingFieldsDialog(
-      {required this.classCode, required this.missing});
+  const _ExportMissingFieldsDialog({
+    required this.classCode,
+    required this.missing,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -789,11 +859,19 @@ class _ExportMissingFieldsDialog extends StatelessWidget {
       title: Row(
         children: [
           const Kicker(
-              text: 'Export Blocked', number: '§', color: AppTheme.rust),
+            text: 'Export Blocked',
+            number: '§',
+            color: AppTheme.rust,
+          ),
           const Spacer(),
-          Text('${missing.length}',
-              style: AppTheme.display(40,
-                  weight: FontWeight.w600, color: AppTheme.rust)),
+          Text(
+            '${missing.length}',
+            style: AppTheme.display(
+              40,
+              weight: FontWeight.w600,
+              color: AppTheme.rust,
+            ),
+          ),
         ],
       ),
       content: SizedBox(
@@ -862,9 +940,14 @@ class _ExportResultDialog extends StatelessWidget {
         children: [
           const Kicker(text: 'Export Complete', number: '§'),
           const Spacer(),
-          Text('${state.successCount}',
-              style: AppTheme.display(40,
-                  weight: FontWeight.w600, color: AppTheme.forest)),
+          Text(
+            '${state.successCount}',
+            style: AppTheme.display(
+              40,
+              weight: FontWeight.w600,
+              color: AppTheme.forest,
+            ),
+          ),
         ],
       ),
       content: SizedBox(
@@ -874,8 +957,10 @@ class _ExportResultDialog extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Files written',
-                  style: AppTheme.label(10, color: AppTheme.inkMuted)),
+              Text(
+                'Files written',
+                style: AppTheme.label(10, color: AppTheme.inkMuted),
+              ),
               const SizedBox(height: 8),
               Container(
                 padding: const EdgeInsets.all(12),
@@ -893,19 +978,23 @@ class _ExportResultDialog extends StatelessWidget {
                 Row(
                   children: [
                     StatusPill(
-                        label: '${state.failCount} FAILED',
-                        color: AppTheme.rust,
-                        filled: true),
+                      label: '${state.failCount} FAILED',
+                      color: AppTheme.rust,
+                      filled: true,
+                    ),
                   ],
                 ),
                 const SizedBox(height: 12),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: AppTheme.rust.withValues(alpha: 0.06),
-                    border:
-                        Border.all(color: AppTheme.rust.withValues(alpha: 0.3)),
+                    border: Border.all(
+                      color: AppTheme.rust.withValues(alpha: 0.3),
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -916,23 +1005,36 @@ class _ExportResultDialog extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Row(children: [
-                                Container(
-                                  width: 4,
-                                  height: 14,
-                                  margin: const EdgeInsets.only(right: 10),
-                                  color: AppTheme.rust,
-                                ),
-                                Text(f.draft.classCode,
-                                    style: AppTheme.mono(13,
-                                        weight: FontWeight.w700)),
-                              ]),
+                              Row(
+                                children: [
+                                  Container(
+                                    width: 4,
+                                    height: 14,
+                                    margin: const EdgeInsets.only(right: 10),
+                                    color: AppTheme.rust,
+                                  ),
+                                  Text(
+                                    f.draft.classCode,
+                                    style: AppTheme.mono(
+                                      13,
+                                      weight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
                               Padding(
-                                padding: const EdgeInsets.only(left: 14, top: 4),
-                                child: Text(f.error ?? 'Unknown error',
-                                    style: AppTheme.body(12,
-                                        color: AppTheme.inkSoft,
-                                        height: 1.45)),
+                                padding: const EdgeInsets.only(
+                                  left: 14,
+                                  top: 4,
+                                ),
+                                child: Text(
+                                  f.error ?? 'Unknown error',
+                                  style: AppTheme.body(
+                                    12,
+                                    color: AppTheme.inkSoft,
+                                    height: 1.45,
+                                  ),
+                                ),
                               ),
                             ],
                           ),
