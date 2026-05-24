@@ -1,580 +1,184 @@
-<div align="center">
+# FG Tool
 
-# 🎓 FG Tool — FuGrade Automation Suite
+FuGrade Automation Suite for FPT University grading workflows.
 
-**English** | [Tiếng Việt](#tiếng-việt)
+FG Tool is a Windows desktop application plus a .NET helper that works with FuGrade `.fg` and `.cmt` files. It parses FuGrade grade exports, fills capstone/thesis comment drafts, syncs contribution data with Google Sheets, writes FINAL-sheet summaries, and can write grading component scores back into supported `.fg` files.
 
-[![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter)](https://flutter.dev)
-[![Dart](https://img.shields.io/badge/Dart-3.x-0175C2?logo=dart)](https://dart.dev)
-[![.NET](https://img.shields.io/badge/.NET-4.8-512BD4?logo=dotnet)](https://dotnet.microsoft.com)
-[![Platform](https://img.shields.io/badge/Platform-Windows-0078D4?logo=windows)](https://www.microsoft.com/windows)
-[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+## What It Does
 
-*Automate `.cmt` file creation for FPT University's FuGrade grading system.*
+| Workflow | Support |
+| --- | --- |
+| Parse `.fg` files | Reads FuGrade grade exports through `FuGradeHelper.exe parse-fg`. |
+| Load thesis grading components | Enriches parsed groups from `FinalThesisGradingItems.master` when FuGrade data has empty component lists. |
+| Edit `.cmt` drafts | Provides a Flutter editor for per-group thesis comments and student verdicts. |
+| Generate `.cmt` files | Writes binary `.cmt` files accepted by FuGrade Editor. |
+| Sync Google Sheets | Reads group/member/contribution data and matches it to `.fg` students. |
+| Update FINAL sheet | Writes key-based FINAL rows, contribution paragraph text, and contribution JSON without relying on fixed column positions. |
+| Update `.fg` grades | Writes grading component scores back to supported JSON/AES FuGrade `.fg` payloads. |
 
-</div>
+## Repository Layout
 
----
-
-## Table of Contents
-
-- [Overview](#overview)
-- [Architecture](#architecture)
-- [Components](#components)
-  - [fugrade\_automation (Flutter GUI)](#fugrade_automation-flutter-gui)
-  - [FuGradeHelper (.NET CLI)](#fugradehelper-net-cli)
-  - [FuGradeTypes (.NET Library)](#fugradtypes-net-library)
-- [Prerequisites](#prerequisites)
-- [Getting Started](#getting-started)
-- [Project Structure](#project-structure)
-- [Tech Stack](#tech-stack)
-- [Contributing](#contributing)
-
----
-
-## Overview
-
-**FG Tool** is a two-component desktop suite built for FPT University instructors to streamline the grading workflow of capstone / thesis subjects inside **FuGrade Editor**.
-
-| Pain Point | Solution |
-|---|---|
-| Manually filling `.cmt` binary files for every student group | Flutter GUI auto-generates `.cmt` files in bulk |
-| Reading/inspecting opaque `.fg` and `.cmt` binary formats | .NET CLI parses and dumps them as JSON |
-| Pulling student contribution data from spreadsheets | Google Sheets API integration syncs data automatically |
-| Matching `.fg` grade records to sheet rows | Smart fuzzy-matching service handles name/roll variations |
-
----
-
-## Architecture
-
-```
+```text
 FG_Tool/
-├── fugrade_automation/        # Flutter Windows desktop application (GUI)
-│   └── lib/
-│       ├── core/              # Theme, constants, utilities
-│       ├── data/              # Data sources + JSON models
-│       ├── domain/            # Business logic services
-│       └── presentation/      # BLoC state management + screens
-│
-├── FuGradeHelper/             # .NET 4.8 CLI helper (binary format bridge)
-│   ├── Commands/              # parse-fg, write-cmt, read-cmt, inspect-cmt
-│   ├── Dtos/                  # Input/output data transfer objects
-│   └── Surrogates/            # BinaryFormatter serialization helpers
-│
-└── FuGradeTypes/              # .NET 4.8 shared library
-    └── ThesisTypes.cs         # ThesisComment & ThesisStudent types
+|-- fugrade_automation/       Flutter Windows desktop app
+|   |-- assets/helper/        Bundled helper executable, DLLs, and master files
+|   `-- lib/                  App source, BLoCs, screens, data sources, models
+|-- FuGradeHelper/            .NET Framework 4.8 CLI bridge
+|   |-- Commands/             parse-fg, write-fg, read-cmt, write-cmt, inspect-cmt
+|   |-- Dtos/                 CLI JSON DTOs
+|   `-- Surrogates/           BinaryFormatter surrogate and binder support
+|-- FuGradeTypes/             Assembly named `FuGrade` for FuGrade-compatible types
+`-- README.md
 ```
 
-The Flutter app spawns **FuGradeHelper.exe** as a subprocess to bridge between the Dart world and the proprietary `.fg`/`.cmt` binary formats that FuGrade Editor uses internally.
+The Flutter app runs `FuGradeHelper.exe` as a subprocess. The helper handles FuGrade-specific file formats and returns JSON to the Dart application.
 
----
+## Requirements
 
-## Components
+- Windows 10/11.
+- Flutter SDK compatible with `fugrade_automation/pubspec.yaml`.
+- .NET Framework 4.8 build toolchain, via Visual Studio or `dotnet`.
+- Google service account credentials for Sheets integration.
+- FuGrade helper assets bundled in `fugrade_automation/assets/helper/`.
 
-### fugrade\_automation (Flutter GUI)
+## Helper Assets
 
-A Flutter **Windows desktop** application that provides the full end-to-end grading workflow:
+The Flutter app expects these files under `fugrade_automation/assets/helper/`:
 
-#### Key Features
-
-- **Load `.fg` files** — parse FuGrade binary grade exports via the CLI bridge
-- **Sync Google Sheets** — pull student contribution percentages from a shared spreadsheet using a service-account credential
-- **Smart Matching** — fuzzy-match sheet rows against `.fg` student records (handles name/roll inconsistencies)
-- **CMT Editor** — review and manually adjust auto-filled thesis comment fields per group
-- **Bulk Export** — generate `.cmt` binary files for all groups in one click
-- **Scholarly Modernism UI** — warm paper-toned Material 3 theme with Windows system fonts (Cambria, Bahnschrift, Cascadia Mono)
-
-#### Screen Flow
-
-```
-HomeScreen
-  ├── FgLoaderBloc   → loads & parses .fg file
-  ├── SheetSyncBloc  → syncs Google Sheets data
-  └── GroupListScreen
-        └── CmtEditorScreen  (per group)
-              └── ExportScreen → writes .cmt files
+```text
+FuGradeHelper.exe
+FuGrade.dll
+Newtonsoft.Json.dll
+MasterFile/FinalThesisGradingItems.master
 ```
 
-#### State Management (BLoC)
+`FuGradeHelper.exe` and `FuGrade.dll` are produced by the .NET projects. `Newtonsoft.Json.dll` is required by the helper at runtime. `FinalThesisGradingItems.master` provides the final thesis grading component list used when a parsed `.fg` file does not include grading components.
 
-| BLoC | Responsibility |
-|---|---|
-| `FgLoaderBloc` | File picking, `.fg` parsing, version detection |
-| `SheetSyncBloc` | Google Sheets API fetch, row matching |
-| `CmtEditorBloc` | Per-group editor state, field validation |
-| `ExportBloc` | CMT file generation, output path management |
+## Build
 
----
+From the repository root:
 
-### FuGradeHelper (.NET CLI)
-
-A **.NET Framework 4.8** console application that acts as the binary format bridge. The Flutter app communicates with it via `stdin`/`stdout` using JSON.
-
-#### Commands
-
-```
-FuGradeHelper.exe <command> [options]
-
-Commands:
-  parse-fg <path.fg>
-      Parse a FuGrade .fg binary file and output grade data as JSON to stdout.
-
-  write-cmt --data <json> --output <path.cmt>
-      Serialize a JSON thesis comment payload into a .cmt binary file.
-      Accepts --data-file <path> as an alternative to inline --data.
-
-  read-cmt <path.cmt>
-      Deserialize a .cmt binary file and print its content as JSON.
-
-  inspect-cmt <path.cmt>
-      Dump raw type metadata from a .cmt binary (useful for debugging
-      unknown/corrupted files without full deserialization).
+```powershell
+dotnet build FuGradeHelper\FuGradeHelper.csproj -c Release
 ```
 
-#### Design Notes
+Copy the Release output into `fugrade_automation/assets/helper/` if it is not already there.
 
-- Uses `BinaryFormatter` with custom `SerializationBinder` surrogates so the assembly identity (`FuGrade`) matches exactly what FuGrade.exe expects
-- `FgSerializationBinder` redirects `.fg` types to local surrogate classes for safe deserialization
-- `InspectCmtCommand` uses a `DumpBinder` that intercepts type resolution and captures metadata without needing the original assemblies
+Then build or run the Flutter app:
 
----
-
-### FuGradeTypes (.NET Library)
-
-A minimal **.NET Framework 4.8** class library whose sole purpose is to define the serializable types with the **exact assembly identity** (`AssemblyName=FuGrade`) that FuGrade.exe embeds in `.cmt` files.
-
-```csharp
-[Serializable]
-public class ThesisComment   // top-level .cmt object
-[Serializable]
-public class ThesisStudent   // per-student verdict record
-```
-
-> **Why a separate project?** `BinaryFormatter` encodes the assembly name in every type reference. By naming the output assembly `FuGrade` (via `<AssemblyName>FuGrade</AssemblyName>`) the generated `.cmt` files are accepted by the original FuGrade Editor without modification.
-
----
-
-## Prerequisites
-
-### Flutter App
-
-| Requirement | Version |
-|---|---|
-| Flutter SDK | `^3.11.5` (Dart `^3.11.5`) |
-| Target Platform | Windows 10/11 (64-bit) |
-| Google Service Account JSON | Required for Sheets integration |
-
-### .NET Helper
-
-| Requirement | Version |
-|---|---|
-| .NET Framework | 4.8 |
-| Build Toolchain | `dotnet` CLI or Visual Studio 2022+ |
-
----
-
-## Getting Started
-
-### 1. Clone the Repository
-
-```bash
-git clone https://github.com/TDuckAn/FG_Tool.git
-cd FG_Tool
-```
-
-### 2. Build FuGradeHelper
-
-```bash
-cd FuGradeHelper
-dotnet build -c Release
-```
-
-The output `FuGradeHelper.exe` will be in `FuGradeHelper/bin/Release/net48/`.  
-Place (or configure the path to) this executable inside `fugrade_automation/assets/helper/`.
-
-### 3. Set Up the Flutter App
-
-```bash
+```powershell
 cd fugrade_automation
 flutter pub get
-flutter pub run build_runner build --delete-conflicting-outputs
-```
-
-### 4. Configure Google Sheets Credentials
-
-Place your Google service-account JSON key file in the assets folder and configure the sheet ID in the app settings on first run.
-
-### 5. Run the App
-
-```bash
+flutter analyze
 flutter run -d windows
 ```
 
-Or build a release executable:
+For a Windows debug build:
 
-```bash
-flutter build windows --release
+```powershell
+flutter build windows --debug
 ```
 
----
+## FuGradeHelper Commands
 
-## Project Structure
-
-```
-fugrade_automation/lib/
-├── main.dart
-├── core/
-│   ├── constants/
-│   │   ├── app_strings.dart          # UI string constants
-│   │   ├── capstone_subjects.dart    # Known capstone subject codes
-│   │   └── cmt_password.dart        # Default CMT password config
-│   ├── theme/
-│   │   └── app_theme.dart           # Scholarly Modernism theme + widgets
-│   └── utils/
-│       ├── app_logger.dart
-│       ├── file_utils.dart
-│       ├── roll_utils.dart           # Student roll number normalization
-│       ├── semester_utils.dart       # Semester code parsing
-│       └── version_utils.dart
-├── data/
-│   ├── datasources/
-│   │   ├── cmt_writer_datasource.dart    # Calls FuGradeHelper write-cmt
-│   │   ├── fg_parser_datasource.dart     # Calls FuGradeHelper parse-fg
-│   │   ├── local_storage_datasource.dart # App preferences persistence
-│   │   └── sheets_api_datasource.dart    # Google Sheets API v4
-│   └── models/                           # JSON-serializable DTOs (json_serializable)
-│       ├── cmt_draft_dto.dart
-│       ├── member_contribution_dto.dart
-│       ├── sheet_row_dto.dart
-│       ├── student_decision_dto.dart
-│       ├── student_dto.dart
-│       ├── subject_class_grade_dto.dart
-│       └── teacher_grade_dto.dart
-├── domain/
-│   └── services/
-│       ├── contribution_merge_service.dart   # Merge sheet percentages into grade data
-│       └── matching_service.dart             # Fuzzy name/roll matching
-└── presentation/
-    ├── blocs/
-    │   ├── cmt_editor/cmt_editor_bloc.dart
-    │   ├── export/export_bloc.dart
-    │   ├── fg_loader/fg_loader_bloc.dart
-    │   └── sheet_sync/sheet_sync_bloc.dart
-    └── screens/
-        ├── cmt_editor_screen.dart
-        ├── export_screen.dart
-        ├── group_list_screen.dart
-        └── home_screen.dart
+```text
+FuGradeHelper.exe parse-fg <path.fg>
+FuGradeHelper.exe write-fg --input <path.fg> --grades-file <scores.json> --output <path.fg>
+FuGradeHelper.exe write-cmt --data <json> --output <path.cmt>
+FuGradeHelper.exe write-cmt --data-file <payload.json> --output <path.cmt>
+FuGradeHelper.exe read-cmt <path.cmt>
+FuGradeHelper.exe inspect-cmt <path.cmt>
 ```
 
----
+### `parse-fg`
 
-## Tech Stack
+Parses a FuGrade `.fg` file and prints JSON to stdout. The parser supports raw JSON, AES/base64 FuGrade JSON payloads, and existing BinaryFormatter parsing paths.
 
-| Layer | Technology |
-|---|---|
-| GUI Framework | Flutter 3.x (Windows desktop) |
-| State Management | flutter\_bloc 9.x + equatable |
-| API Integration | googleapis 14.x + googleapis\_auth 1.x |
-| Code Generation | json\_serializable + build\_runner |
-| File Picker | file\_picker 5.x |
-| Binary Bridge | .NET Framework 4.8 (BinaryFormatter) |
-| Serialization | Newtonsoft.Json 13.x |
-| Theme | Material 3 — "Scholarly Modernism" |
+When a final thesis group has no grading components in the `.fg` payload, the parser can enrich the output from:
 
----
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/your-feature`
-3. Commit your changes: `git commit -m 'feat: add your feature'`
-4. Push to the branch: `git push origin feature/your-feature`
-5. Open a Pull Request
-
----
-
----
-
-<div align="center">
-
-# Tiếng Việt
-
-[English](#-fg-tool--fugrade-automation-suite) | **Tiếng Việt**
-
-</div>
-
----
-
-## Mục Lục
-
-- [Tổng Quan](#tổng-quan)
-- [Kiến Trúc](#kiến-trúc)
-- [Các Thành Phần](#các-thành-phần)
-  - [fugrade\_automation (Giao Diện Flutter)](#fugrade_automation-giao-diện-flutter)
-  - [FuGradeHelper (CLI .NET)](#fugradehelper-cli-net)
-  - [FuGradeTypes (Thư Viện .NET)](#fugradtypes-thư-viện-net)
-- [Yêu Cầu Hệ Thống](#yêu-cầu-hệ-thống)
-- [Hướng Dẫn Cài Đặt](#hướng-dẫn-cài-đặt)
-- [Cấu Trúc Dự Án](#cấu-trúc-dự-án)
-- [Công Nghệ Sử Dụng](#công-nghệ-sử-dụng)
-
----
-
-## Tổng Quan
-
-**FG Tool** là bộ ứng dụng desktop gồm hai thành phần, được xây dựng dành cho giảng viên Trường Đại học FPT nhằm tự động hóa quy trình chấm điểm các môn đồ án / khóa luận trong **FuGrade Editor**.
-
-| Vấn Đề | Giải Pháp |
-|---|---|
-| Phải điền thủ công file `.cmt` nhị phân cho từng nhóm sinh viên | Giao diện Flutter tự động tạo hàng loạt file `.cmt` |
-| Định dạng nhị phân `.fg` và `.cmt` khó đọc, khó kiểm tra | CLI .NET phân tích và xuất ra JSON dễ đọc |
-| Lấy dữ liệu đóng góp sinh viên từ bảng tính | Tích hợp Google Sheets API đồng bộ dữ liệu tự động |
-| Khớp bản ghi điểm `.fg` với dữ liệu bảng tính | Dịch vụ so khớp thông minh xử lý sai lệch tên/mã số |
-
----
-
-## Kiến Trúc
-
-```
-FG_Tool/
-├── fugrade_automation/        # Ứng dụng Flutter Windows (giao diện đồ họa)
-│   └── lib/
-│       ├── core/              # Giao diện, hằng số, tiện ích
-│       ├── data/              # Nguồn dữ liệu + mô hình JSON
-│       ├── domain/            # Dịch vụ nghiệp vụ
-│       └── presentation/      # Quản lý trạng thái BLoC + màn hình
-│
-├── FuGradeHelper/             # CLI .NET 4.8 (cầu nối định dạng nhị phân)
-│   ├── Commands/              # parse-fg, write-cmt, read-cmt, inspect-cmt
-│   ├── Dtos/                  # Đối tượng truyền dữ liệu vào/ra
-│   └── Surrogates/            # Trình hỗ trợ tuần tự hóa BinaryFormatter
-│
-└── FuGradeTypes/              # Thư viện .NET 4.8 dùng chung
-    └── ThesisTypes.cs         # Kiểu ThesisComment & ThesisStudent
+```text
+FuGradeHelper/MasterFile/FinalThesisGradingItems.master
 ```
 
-Ứng dụng Flutter khởi chạy **FuGradeHelper.exe** như một tiến trình con để kết nối giữa thế giới Dart và các định dạng nhị phân độc quyền `.fg`/`.cmt` mà FuGrade Editor sử dụng nội bộ.
+### `write-fg`
 
----
+Writes grading component scores into a supported FuGrade JSON/AES `.fg` file. The app uses this when saving scores from the CMT editor.
 
-## Các Thành Phần
+Grades file format:
 
-### fugrade\_automation (Giao Diện Flutter)
-
-Ứng dụng **Windows desktop** Flutter cung cấp toàn bộ quy trình chấm điểm từ đầu đến cuối:
-
-#### Tính Năng Chính
-
-- **Tải file `.fg`** — phân tích file xuất điểm nhị phân FuGrade thông qua cầu nối CLI
-- **Đồng bộ Google Sheets** — lấy tỷ lệ đóng góp của sinh viên từ bảng tính chia sẻ bằng tài khoản dịch vụ
-- **So Khớp Thông Minh** — so khớp mờ hàng bảng tính với bản ghi sinh viên trong file `.fg` (xử lý sai lệch tên/mã số)
-- **Trình Chỉnh Sửa CMT** — xem xét và điều chỉnh thủ công các trường nhận xét đề tài đã điền tự động cho từng nhóm
-- **Xuất Hàng Loạt** — tạo file `.cmt` nhị phân cho tất cả nhóm chỉ với một cú nhấp chuột
-- **Giao Diện Scholarly Modernism** — chủ đề Material 3 tông màu giấy ấm với font hệ thống Windows (Cambria, Bahnschrift, Cascadia Mono)
-
-#### Luồng Màn Hình
-
-```
-HomeScreen (Màn hình chính)
-  ├── FgLoaderBloc   → tải và phân tích file .fg
-  ├── SheetSyncBloc  → đồng bộ dữ liệu Google Sheets
-  └── GroupListScreen (Danh sách nhóm)
-        └── CmtEditorScreen (Chỉnh sửa CMT - từng nhóm)
-              └── ExportScreen → ghi file .cmt
+```json
+{
+  "SE18D01": {
+    "SE151222": {
+      "Final Project Presentation": 8.5,
+      "Final Report": 9.0
+    },
+    "SE151223": {
+      "Final Project Presentation": 8.0
+    }
+  }
+}
 ```
 
-#### Quản Lý Trạng Thái (BLoC)
+The top-level key is the class code. The second-level key is the student roll number. The innermost keys are FuGrade component names.
 
-| BLoC | Trách Nhiệm |
-|---|---|
-| `FgLoaderBloc` | Chọn file, phân tích `.fg`, phát hiện phiên bản |
-| `SheetSyncBloc` | Lấy dữ liệu Google Sheets API, so khớp hàng |
-| `CmtEditorBloc` | Trạng thái trình chỉnh sửa từng nhóm, kiểm tra trường dữ liệu |
-| `ExportBloc` | Tạo file CMT, quản lý đường dẫn đầu ra |
+Current limitation: `write-fg` updates JSON/AES FuGrade payloads. BinaryFormatter `.fg` payloads are detected, but grade writing for that format is not implemented.
 
----
+### `write-cmt`
 
-### FuGradeHelper (CLI .NET)
+Serializes a JSON thesis comment payload into a FuGrade-compatible `.cmt` binary file.
 
-Ứng dụng console **.NET Framework 4.8** đóng vai trò cầu nối định dạng nhị phân. Ứng dụng Flutter giao tiếp với nó qua `stdin`/`stdout` bằng JSON.
+### `read-cmt`
 
-#### Các Lệnh
+Deserializes a `.cmt` file and prints readable JSON.
 
-```
-FuGradeHelper.exe <lệnh> [tùy chọn]
+### `inspect-cmt`
 
-Lệnh:
-  parse-fg <đường-dẫn.fg>
-      Phân tích file nhị phân FuGrade .fg và xuất dữ liệu điểm dưới dạng JSON ra stdout.
+Dumps type metadata from a `.cmt` file for debugging unknown or corrupted binary files.
 
-  write-cmt --data <json> --output <đường-dẫn.cmt>
-      Tuần tự hóa payload nhận xét đề tài JSON thành file nhị phân .cmt.
-      Chấp nhận --data-file <đường-dẫn> thay thế cho --data nội tuyến.
+## App Workflow
 
-  read-cmt <đường-dẫn.cmt>
-      Giải tuần tự hóa file nhị phân .cmt và in nội dung dưới dạng JSON.
+1. Open a FuGrade `.fg` file in the Flutter app.
+2. Review parsed classes, groups, students, and grading components.
+3. Sync Google Sheets if contribution data is maintained externally.
+4. Edit CMT comments and student verdicts per group.
+5. Enter contribution percentages manually or import them from the sheet.
+6. Save grading component scores back to the original `.fg` file when needed.
+7. Export `.cmt` files for FuGrade Editor.
+8. Write FINAL-sheet data when sheet credentials and a target spreadsheet are configured.
 
-  inspect-cmt <đường-dẫn.cmt>
-      Xuất metadata kiểu thô từ file .cmt nhị phân (hữu ích để gỡ lỗi
-      các file không rõ/bị hỏng mà không cần giải tuần tự hóa đầy đủ).
-```
+## Google Sheets Notes
 
-#### Ghi Chú Thiết Kế
+Contribution import accepts explicit contribution headers such as:
 
-- Sử dụng `BinaryFormatter` với các surrogate `SerializationBinder` tùy chỉnh để danh tính assembly (`FuGrade`) khớp chính xác với những gì FuGrade.exe mong đợi
-- `FgSerializationBinder` chuyển hướng các kiểu `.fg` sang các lớp surrogate cục bộ để giải tuần tự hóa an toàn
-- `InspectCmtCommand` dùng `DumpBinder` chặn quá trình phân giải kiểu và thu thập metadata mà không cần các assembly gốc
-
----
-
-### FuGradeTypes (Thư Viện .NET)
-
-Thư viện lớp **.NET Framework 4.8** tối giản với mục đích duy nhất là định nghĩa các kiểu có thể tuần tự hóa với **danh tính assembly chính xác** (`AssemblyName=FuGrade`) mà FuGrade.exe nhúng trong các file `.cmt`.
-
-```csharp
-[Serializable]
-public class ThesisComment   // đối tượng .cmt cấp cao nhất
-[Serializable]
-public class ThesisStudent   // bản ghi kết quả từng sinh viên
+```text
+Student roll number - % Contribution
 ```
 
-> **Tại sao cần project riêng?** `BinaryFormatter` mã hóa tên assembly trong mỗi tham chiếu kiểu. Bằng cách đặt tên assembly đầu ra là `FuGrade` (qua `<AssemblyName>FuGrade</AssemblyName>`), các file `.cmt` được tạo ra sẽ được FuGrade Editor gốc chấp nhận mà không cần sửa đổi.
+Contribution paragraphs can use lines like:
 
----
-
-## Yêu Cầu Hệ Thống
-
-### Ứng Dụng Flutter
-
-| Yêu Cầu | Phiên Bản |
-|---|---|
-| Flutter SDK | `^3.11.5` (Dart `^3.11.5`) |
-| Nền Tảng Mục Tiêu | Windows 10/11 (64-bit) |
-| JSON Tài Khoản Dịch Vụ Google | Bắt buộc để tích hợp Sheets |
-
-### .NET Helper
-
-| Yêu Cầu | Phiên Bản |
-|---|---|
-| .NET Framework | 4.8 |
-| Công Cụ Build | CLI `dotnet` hoặc Visual Studio 2022+ |
-
----
-
-## Hướng Dẫn Cài Đặt
-
-### 1. Clone Repository
-
-```bash
-git clone https://github.com/TDuckAn/FG_Tool.git
-cd FG_Tool
+```text
+SE160015 - 50
+SE160016 - 50
 ```
 
-### 2. Build FuGradeHelper
+The FINAL-sheet writer discovers columns by header names, appends missing final headers when needed, and writes by row keys instead of fixed `A:R` offsets.
 
-```bash
-cd FuGradeHelper
-dotnet build -c Release
-```
+## Development Checks
 
-File `FuGradeHelper.exe` đầu ra sẽ nằm trong `FuGradeHelper/bin/Release/net48/`.  
-Đặt (hoặc cấu hình đường dẫn đến) file thực thi này vào `fugrade_automation/assets/helper/`.
+Useful verification commands:
 
-### 3. Thiết Lập Ứng Dụng Flutter
-
-```bash
+```powershell
+dotnet build FuGradeHelper\FuGradeHelper.csproj -c Release
 cd fugrade_automation
-flutter pub get
-flutter pub run build_runner build --delete-conflicting-outputs
+flutter analyze
+flutter build windows --debug
 ```
 
-### 4. Cấu Hình Thông Tin Xác Thực Google Sheets
+The current Windows build may print non-fatal `file_picker` CMake metadata warnings depending on the local plugin cache.
 
-Đặt file JSON khóa tài khoản dịch vụ Google vào thư mục assets và cấu hình sheet ID trong cài đặt ứng dụng lần đầu chạy.
+## Notes
 
-### 5. Chạy Ứng Dụng
-
-```bash
-flutter run -d windows
-```
-
-Hoặc build file thực thi release:
-
-```bash
-flutter build windows --release
-```
-
----
-
-## Cấu Trúc Dự Án
-
-```
-fugrade_automation/lib/
-├── main.dart
-├── core/
-│   ├── constants/
-│   │   ├── app_strings.dart          # Hằng số chuỗi giao diện
-│   │   ├── capstone_subjects.dart    # Mã môn đồ án đã biết
-│   │   └── cmt_password.dart        # Cấu hình mật khẩu CMT mặc định
-│   ├── theme/
-│   │   └── app_theme.dart           # Chủ đề Scholarly Modernism + widget
-│   └── utils/
-│       ├── app_logger.dart
-│       ├── file_utils.dart
-│       ├── roll_utils.dart           # Chuẩn hóa mã số sinh viên
-│       ├── semester_utils.dart       # Phân tích mã học kỳ
-│       └── version_utils.dart
-├── data/
-│   ├── datasources/
-│   │   ├── cmt_writer_datasource.dart    # Gọi FuGradeHelper write-cmt
-│   │   ├── fg_parser_datasource.dart     # Gọi FuGradeHelper parse-fg
-│   │   ├── local_storage_datasource.dart # Lưu trữ tùy chỉnh ứng dụng
-│   │   └── sheets_api_datasource.dart    # Google Sheets API v4
-│   └── models/                           # DTO có thể tuần tự hóa JSON
-│       ├── cmt_draft_dto.dart
-│       ├── member_contribution_dto.dart
-│       ├── sheet_row_dto.dart
-│       ├── student_decision_dto.dart
-│       ├── student_dto.dart
-│       ├── subject_class_grade_dto.dart
-│       └── teacher_grade_dto.dart
-├── domain/
-│   └── services/
-│       ├── contribution_merge_service.dart   # Gộp tỷ lệ đóng góp vào dữ liệu điểm
-│       └── matching_service.dart             # So khớp mờ tên/mã số
-└── presentation/
-    ├── blocs/
-    │   ├── cmt_editor/cmt_editor_bloc.dart
-    │   ├── export/export_bloc.dart
-    │   ├── fg_loader/fg_loader_bloc.dart
-    │   └── sheet_sync/sheet_sync_bloc.dart
-    └── screens/
-        ├── cmt_editor_screen.dart
-        ├── export_screen.dart
-        ├── group_list_screen.dart
-        └── home_screen.dart
-```
-
----
-
-## Công Nghệ Sử Dụng
-
-| Tầng | Công Nghệ |
-|---|---|
-| Framework Giao Diện | Flutter 3.x (Windows desktop) |
-| Quản Lý Trạng Thái | flutter\_bloc 9.x + equatable |
-| Tích Hợp API | googleapis 14.x + googleapis\_auth 1.x |
-| Sinh Mã | json\_serializable + build\_runner |
-| Chọn File | file\_picker 5.x |
-| Cầu Nối Nhị Phân | .NET Framework 4.8 (BinaryFormatter) |
-| Tuần Tự Hóa | Newtonsoft.Json 13.x |
-| Giao Diện | Material 3 — "Scholarly Modernism" |
-
----
-
-<div align="center">
-
-Made with ❤️ for FPT University instructors
-
-</div>
+- The `.cmt` writer depends on `FuGradeTypes` building an assembly named `FuGrade`, because FuGrade Editor expects that assembly identity in serialized files.
+- Keep helper binaries and master files in Flutter assets when packaging the app.
+- Avoid renaming FuGrade grading components in app code. `write-fg` matches component names case-insensitively but relies on the original FuGrade component text.
