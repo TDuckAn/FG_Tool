@@ -1321,38 +1321,47 @@ class _DecisionRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 16),
-          // Center: segmented decision
-          SizedBox(
-            width: 360,
-            child: SegmentedButton<DefenseOutcome>(
-              showSelectedIcon: false,
-              segments: const [
-                ButtonSegment(
-                  value: DefenseOutcome.agree,
-                  label: Text('AGREE'),
-                  icon: Icon(Icons.check, size: 14),
+          // Center + Right: decision + note stacked
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: double.infinity,
+                  child: SegmentedButton<DefenseOutcome>(
+                    showSelectedIcon: false,
+                    segments: const [
+                      ButtonSegment(
+                        value: DefenseOutcome.agree,
+                        label: Text('AGREE'),
+                        icon: Icon(Icons.check, size: 14),
+                      ),
+                      ButtonSegment(
+                        value: DefenseOutcome.revisedForSecondDefense,
+                        label: Text('REVISED'),
+                        icon: Icon(Icons.refresh, size: 14),
+                      ),
+                      ButtonSegment(
+                        value: DefenseOutcome.disagree,
+                        label: Text('DISAGREE'),
+                        icon: Icon(Icons.close, size: 14),
+                      ),
+                    ],
+                    selected: {decision.outcome},
+                    onSelectionChanged: (s) => context
+                        .read<CmtEditorBloc>()
+                        .add(DecisionUpdated(decision.roll, s.first)),
+                  ),
                 ),
-                ButtonSegment(
-                  value: DefenseOutcome.revisedForSecondDefense,
-                  label: Text('REVISED'),
-                  icon: Icon(Icons.refresh, size: 14),
-                ),
-                ButtonSegment(
-                  value: DefenseOutcome.disagree,
-                  label: Text('DISAGREE'),
-                  icon: Icon(Icons.close, size: 14),
+                const SizedBox(height: 12),
+                _NoteField(
+                  roll: decision.roll,
+                  value: decision.note,
+                  minLines: 3,
+                  maxLines: 4,
                 ),
               ],
-              selected: {decision.outcome},
-              onSelectionChanged: (s) => context.read<CmtEditorBloc>().add(
-                DecisionUpdated(decision.roll, s.first),
-              ),
             ),
-          ),
-          const SizedBox(width: 16),
-          // Right: note
-          Expanded(
-            child: _NoteField(roll: decision.roll, value: decision.note),
           ),
         ],
       ),
@@ -1400,7 +1409,14 @@ class _ContribTag extends StatelessWidget {
 class _NoteField extends StatefulWidget {
   final String roll;
   final String value;
-  const _NoteField({required this.roll, required this.value});
+  final int minLines;
+  final int maxLines;
+  const _NoteField({
+    required this.roll,
+    required this.value,
+    this.minLines = 2,
+    this.maxLines = 3,
+  });
 
   @override
   State<_NoteField> createState() => _NoteFieldState();
@@ -1437,6 +1453,8 @@ class _NoteFieldState extends State<_NoteField> {
     return TextField(
       controller: _ctrl,
       focusNode: _focus,
+      minLines: widget.minLines,
+      maxLines: widget.maxLines,
       style: AppTheme.body(13),
       decoration: InputDecoration(
         labelText: 'NOTE',
