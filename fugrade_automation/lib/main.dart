@@ -18,15 +18,16 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await windowManager.ensureInitialized();
 
-  const options = WindowOptions(
-    center: true,
-    title: 'FuGrade Automation',
-  );
+  const options = WindowOptions(center: true, title: 'FuGrade Automation');
 
   windowManager.waitUntilReadyToShow(options, () async {
-    await windowManager.maximize();
     await windowManager.show();
+    await windowManager.maximize();
     await windowManager.focus();
+    await Future.delayed(const Duration(milliseconds: 200));
+    if (!await windowManager.isMaximized()) {
+      await windowManager.maximize();
+    }
   });
 
   runApp(const FuGradeApp());
@@ -49,8 +50,7 @@ class FuGradeApp extends StatelessWidget {
       child: MultiBlocProvider(
         providers: [
           BlocProvider(
-            create: (ctx) =>
-                FgLoaderBloc(ctx.read<FgParserDatasource>()),
+            create: (ctx) => FgLoaderBloc(ctx.read<FgParserDatasource>()),
           ),
           BlocProvider(
             create: (ctx) => SheetSyncBloc(
