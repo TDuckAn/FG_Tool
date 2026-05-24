@@ -395,10 +395,14 @@ class _GradingDialogState extends State<_GradingDialog> {
   late List<String> _components;
   late Set<String> _selectedComponents;
   bool _dirty = false;
+  late ScrollController _verticalScrollController;
+  late ScrollController _horizontalScrollController;
 
   @override
   void initState() {
     super.initState();
+    _verticalScrollController = ScrollController();
+    _horizontalScrollController = ScrollController();
     _components = _resolveComponents(widget.draft);
     _selectedComponents = widget.draft.grades.values
         .expand((row) => row.keys)
@@ -423,6 +427,8 @@ class _GradingDialogState extends State<_GradingDialog> {
     for (final controller in _controllers.values) {
       controller.dispose();
     }
+    _verticalScrollController.dispose();
+    _horizontalScrollController.dispose();
     super.dispose();
   }
 
@@ -476,35 +482,93 @@ class _GradingDialogState extends State<_GradingDialog> {
                                 ),
                               ),
                             )
-                          : ListView.builder(
-                              itemCount: _components.length,
-                              itemBuilder: (context, index) {
-                                final component = _components[index];
-                                final selected = _selectedComponents.contains(
-                                  component,
-                                );
-
-                                return CheckboxListTile(
-                                  value: selected,
-                                  dense: true,
-                                  controlAffinity:
-                                      ListTileControlAffinity.leading,
-                                  title: Text(
-                                    component,
-                                    style: AppTheme.body(13),
+                          : Column(
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 8,
                                   ),
-                                  onChanged: (value) {
-                                    setState(() {
-                                      if (value == true) {
-                                        _selectedComponents.add(component);
-                                      } else {
-                                        _selectedComponents.remove(component);
-                                      }
-                                      _dirty = true;
-                                    });
-                                  },
-                                );
-                              },
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        '${_components.length} items',
+                                        style: AppTheme.body(
+                                          12,
+                                          weight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      Row(
+                                        children: [
+                                          TextButton(
+                                            onPressed: () {
+                                              setState(() {
+                                                _selectedComponents =
+                                                    _components
+                                                        .map((e) => e.trim())
+                                                        .where(
+                                                          (e) => e.isNotEmpty,
+                                                        )
+                                                        .toSet();
+                                                _dirty = true;
+                                              });
+                                            },
+                                            child: const Text('Select all'),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          TextButton(
+                                            onPressed: () {
+                                              setState(() {
+                                                _selectedComponents.clear();
+                                                _dirty = true;
+                                              });
+                                            },
+                                            child: const Text('Clear'),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const Divider(height: 1),
+                                Expanded(
+                                  child: ListView.builder(
+                                    itemCount: _components.length,
+                                    itemBuilder: (context, index) {
+                                      final component = _components[index];
+                                      final selected = _selectedComponents
+                                          .contains(component);
+
+                                      return CheckboxListTile(
+                                        value: selected,
+                                        dense: true,
+                                        controlAffinity:
+                                            ListTileControlAffinity.leading,
+                                        title: Text(
+                                          component,
+                                          style: AppTheme.body(13),
+                                        ),
+                                        onChanged: (value) {
+                                          setState(() {
+                                            if (value == true) {
+                                              _selectedComponents.add(
+                                                component,
+                                              );
+                                            } else {
+                                              _selectedComponents.remove(
+                                                component,
+                                              );
+                                            }
+                                            _dirty = true;
+                                          });
+                                        },
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ],
                             ),
                     ),
                   ],
@@ -523,56 +587,68 @@ class _GradingDialogState extends State<_GradingDialog> {
                       ),
                     )
                   : Scrollbar(
+                      controller: _verticalScrollController,
                       thumbVisibility: true,
+                      thickness: 12,
+                      radius: const Radius.circular(6),
                       child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: SingleChildScrollView(
-                          child: DataTable(
-                            columns: [
-                              const DataColumn(label: Text('ROLL')),
-                              const DataColumn(label: Text('NAME')),
-                              for (final component in selectedComponents)
-                                DataColumn(
-                                  label: Text(component.toUpperCase()),
-                                ),
-                            ],
-                            rows: widget.draft.students.map((student) {
-                              return DataRow(
-                                cells: [
-                                  DataCell(
-                                    Text(
-                                      student.roll,
-                                      style: AppTheme.mono(12),
-                                    ),
+                        controller: _verticalScrollController,
+                        child: RawScrollbar(
+                          controller: _horizontalScrollController,
+                          thumbVisibility: true,
+                          thickness: 12,
+                          radius: const Radius.circular(6),
+                          thumbColor: AppTheme.ink.withOpacity(0.6),
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            controller: _horizontalScrollController,
+                            child: DataTable(
+                              columns: [
+                                const DataColumn(label: Text('ROLL')),
+                                const DataColumn(label: Text('NAME')),
+                                for (final component in selectedComponents)
+                                  DataColumn(
+                                    label: Text(component.toUpperCase()),
                                   ),
-                                  DataCell(
-                                    Text(
-                                      student.name,
-                                      style: AppTheme.body(12),
-                                    ),
-                                  ),
-                                  for (final component in selectedComponents)
+                              ],
+                              rows: widget.draft.students.map((student) {
+                                return DataRow(
+                                  cells: [
                                     DataCell(
-                                      SizedBox(
-                                        width: 96,
-                                        child: TextField(
-                                          controller:
-                                              _controllers['${student.roll}|$component'],
-                                          keyboardType:
-                                              const TextInputType.numberWithOptions(
-                                                decimal: true,
-                                              ),
-                                          decoration: const InputDecoration(
-                                            isDense: true,
-                                            hintText: '0-10',
-                                          ),
-                                          onChanged: (_) => _dirty = true,
-                                        ),
+                                      Text(
+                                        student.roll,
+                                        style: AppTheme.mono(12),
                                       ),
                                     ),
-                                ],
-                              );
-                            }).toList(),
+                                    DataCell(
+                                      Text(
+                                        student.name,
+                                        style: AppTheme.body(12),
+                                      ),
+                                    ),
+                                    for (final component in selectedComponents)
+                                      DataCell(
+                                        SizedBox(
+                                          width: 96,
+                                          child: TextField(
+                                            controller:
+                                                _controllers['${student.roll}|$component'],
+                                            keyboardType:
+                                                const TextInputType.numberWithOptions(
+                                                  decimal: true,
+                                                ),
+                                            decoration: const InputDecoration(
+                                              isDense: true,
+                                              hintText: '0-10',
+                                            ),
+                                            onChanged: (_) => _dirty = true,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                );
+                              }).toList(),
+                            ),
                           ),
                         ),
                       ),
