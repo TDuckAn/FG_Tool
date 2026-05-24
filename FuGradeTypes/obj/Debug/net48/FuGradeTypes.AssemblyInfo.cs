@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("FuGrade")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+70c711b2cc5c7158448ba132a144c0e202b9d7cc")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f5d8e8ec221df0fa664c5e1982c582f570d82687")]
 [assembly: System.Reflection.AssemblyProductAttribute("FuGrade")]
 [assembly: System.Reflection.AssemblyTitleAttribute("FuGrade")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
