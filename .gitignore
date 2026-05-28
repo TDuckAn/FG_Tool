@@ -12,3 +12,5 @@
 **/build/
 **/.dart_tool/
 **/.vs/
+# Environment file (local secrets)
+.env
