@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Runtime.Serialization;
 using FuGrade;
 using Newtonsoft.Json;
 
@@ -88,7 +89,8 @@ namespace FuGradeHelper.Commands
                 if (typeName == "FuGrade.ThesisStudent[]") return typeof(ThesisStudent[]);
                 if (typeName.Contains("List") && typeName.Contains("FuGrade.ThesisStudent"))
                     return typeof(List<ThesisStudent>);
-                return Type.GetType($"{typeName}, {assemblyName}");
+
+                throw new SerializationException($"Unexpected serialized type: {typeName}");
             }
         }
     }

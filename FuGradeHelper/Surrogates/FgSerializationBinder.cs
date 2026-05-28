@@ -50,8 +50,7 @@ namespace FuGradeHelper.Surrogates
                     return typeof(List<GradeComponentPlaceholder>);
             }
 
-            // Fall through to default resolution for all other types (mscorlib, etc.)
-            return null;
+            throw new SerializationException($"Unexpected serialized type: {typeName}");
         }
 
         public override void BindToName(Type serializedType, out string assemblyName, out string typeName)
