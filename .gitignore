@@ -5,3 +5,10 @@
 /phuonglhkFall2023_FA23SE034_GFA02.cmt
 /phuonglhkSpring2024.fg
 /test_input.json
+
+# Build outputs
+**/bin/
+**/obj/
+**/build/
+**/.dart_tool/
+**/.vs/
